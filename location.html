@@ -111,6 +111,16 @@ let totalDist = 0;
 const N = 200;
 const altBuf = [], spdBuf = [];
 
+// グラフ面タップでその点の値を表示
+const marker = { alt: null, spd: null };
+[['alt', 'cv-alt'], ['spd', 'cv-spd']].forEach(([key, id]) => {
+  const cvEl = document.getElementById(id);
+  cvEl.addEventListener('click', (ev) => {
+    const rect = cvEl.getBoundingClientRect();
+    marker[key] = Math.round((ev.clientX - rect.left) / rect.width * (N - 1));
+  });
+});
+
 playBtn.addEventListener('click', () => {
   if (watchId !== null) {           // 停止
     navigator.geolocation.clearWatch(watchId);
@@ -174,11 +184,11 @@ function distMeters(lat1, lon1, lat2, lon2) {
 function draw() {
   if (watchId === null) return;
   requestAnimationFrame(draw);
-  drawGraph(document.getElementById('cv-alt'), altBuf, '#ff9500', 'alt-range', 'm');
-  drawGraph(document.getElementById('cv-spd'), spdBuf, '#d4c400', 'spd-range', 'm/s');
+  drawGraph(document.getElementById('cv-alt'), altBuf, '#ff9500', 'alt-range', 'm', marker.alt);
+  drawGraph(document.getElementById('cv-spd'), spdBuf, '#d4c400', 'spd-range', 'm/s', marker.spd);
 }
 
-function drawGraph(cv, arr, color, rangeId, unit) {
+function drawGraph(cv, arr, color, rangeId, unit, mIdx) {
   const ctx = cv.getContext('2d');
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
@@ -214,6 +224,24 @@ function drawGraph(cv, arr, color, rangeId, unit) {
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
+
+  // タップした点の値（小数2桁）
+  if (mIdx !== null) {
+    const i = Math.min(mIdx, arr.length - 1);
+    const x = (i / (N - 1)) * W;
+    const y = H - ((arr[i] - min) / (max - min)) * H;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+    const label = arr[i].toFixed(2);
+    ctx.font = 'bold 16px sans-serif';
+    const tw = ctx.measureText(label).width;
+    const lx = Math.min(Math.max(x - tw / 2, 4), W - tw - 4);
+    const ly = y > 34 ? y - 14 : y + 28;
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(lx - 4, ly - 16, tw + 8, 22);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, lx, ly);
+  }
 }
 </script>
 </body>

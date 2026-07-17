@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ジャイロスコープ | 理科実験ラボ</title>
+<title>磁気センサー（3軸） | 理科実験ラボ</title>
 <style>
   :root { --phx-orange: #ffb300; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
   * { box-sizing: border-box; }
@@ -58,28 +58,29 @@
   .hint { text-align: center; color: #888; font-size: 0.8rem; margin: 12px 0; }
   .controls { text-align: center; margin: 8px 0; color: #aaa; font-size: 0.9rem; }
   #err { color: #f88; text-align: center; }
+  #err a { color: #ffb300; }
 </style>
 </head>
 <body>
 <header>
   <a class="back" href="index.html">←</a>
-  <div class="title">ジャイロスコープ（回転の速さ）</div>
+  <div class="title">磁気センサー（3軸）</div>
   <button id="playBtn" title="計測開始">▶</button>
 </header>
 
 <main>
-  <div class="controls">単位：°/s（1秒あたりに回る角度）</div>
+  <div class="controls">単位：µT（マイクロテスラ）。磁石を近づけると値が大きく変わります</div>
 
   <div class="card" id="card-x">
-    <div class="head"><span style="color:var(--ax-x)">回転 X（前後にたおす）</span><span class="val" id="val-x">--</span></div>
+    <div class="head"><span style="color:var(--ax-x)">磁場 X</span><span class="val" id="val-x">--</span></div>
     <canvas id="cv-x" width="720" height="300"></canvas>
   </div>
   <div class="card" id="card-y">
-    <div class="head"><span style="color:var(--ax-y)">回転 Y（左右にかたむける）</span><span class="val" id="val-y">--</span></div>
+    <div class="head"><span style="color:var(--ax-y)">磁場 Y</span><span class="val" id="val-y">--</span></div>
     <canvas id="cv-y" width="720" height="300"></canvas>
   </div>
   <div class="card" id="card-z">
-    <div class="head"><span style="color:var(--ax-z)">回転 Z（画面を回す）</span><span class="val" id="val-z">--</span></div>
+    <div class="head"><span style="color:var(--ax-z)">磁場 Z</span><span class="val" id="val-z">--</span></div>
     <canvas id="cv-z" width="720" height="300"></canvas>
   </div>
 
@@ -93,11 +94,16 @@ const COLORS = { x: '#ff9500', y: '#d4c400', z: '#e04040' };
 const N = 400;
 const buf = { x: [], y: [], z: [] };
 let running = false;
-let listening = false;
+let sensor = null;
 let gotData = false;
 
 const playBtn = document.getElementById('playBtn');
 const errEl = document.getElementById('err');
+
+const UNSUPPORTED_MSG =
+  'この端末のブラウザは磁気センサーの生データ（3軸）に対応していません。' +
+  'iPad Safariは非対応、Chromeも標準では無効です。' +
+  '方位だけなら <a href="compass.html">コンパス</a> で見られます。';
 
 const marker = { x: null, y: null, z: null };
 AXES.forEach(ax => {
@@ -118,26 +124,40 @@ AXES.forEach(ax => {
   });
 });
 
-playBtn.addEventListener('click', async () => {
+playBtn.addEventListener('click', () => {
   if (running) {
     running = false;
     playBtn.textContent = '▶';
     return;
   }
-  if (!listening) {
-    if (typeof DeviceMotionEvent !== 'undefined' &&
-        typeof DeviceMotionEvent.requestPermission === 'function') {
-      try {
-        const res = await DeviceMotionEvent.requestPermission();
-        if (res !== 'granted') { errEl.textContent = 'センサーの使用が許可されませんでした'; return; }
-      } catch (e) {
-        errEl.textContent = '許可の取得に失敗：' + e.message; return;
-      }
+  if (!sensor) {
+    // Generic Sensor API（Chrome系のみ・多くはフラグ必須）
+    if (typeof Magnetometer === 'undefined') {
+      errEl.innerHTML = UNSUPPORTED_MSG;
+      return;
     }
-    window.addEventListener('devicemotion', onMotion);
-    listening = true;
+    try {
+      sensor = new Magnetometer({ frequency: 10 });
+      sensor.addEventListener('reading', () => {
+        if (!running) return;
+        gotData = true;
+        push('x', sensor.x); push('y', sensor.y); push('z', sensor.z);
+        AXES.forEach(ax => {
+          document.getElementById('val-' + ax).textContent =
+            buf[ax][buf[ax].length - 1].toFixed(2) + ' µT';
+        });
+      });
+      sensor.addEventListener('error', (e) => {
+        errEl.innerHTML = 'センサーにアクセスできませんでした（' + e.error.name + '）。' + UNSUPPORTED_MSG;
+      });
+      sensor.start();
+    } catch (e) {
+      errEl.innerHTML = '開始に失敗：' + e.message + '。' + UNSUPPORTED_MSG;
+      sensor = null;
+      return;
+    }
     setTimeout(() => {
-      if (!gotData) errEl.textContent = 'この端末ではジャイロスコープのデータが取れないようです（センサー非搭載の可能性）';
+      if (!gotData) errEl.innerHTML = 'データが来ません。' + UNSUPPORTED_MSG;
     }, 3000);
     draw();
   }
@@ -145,19 +165,6 @@ playBtn.addEventListener('click', async () => {
   errEl.textContent = '';
   playBtn.textContent = '⏸';
 });
-
-function onMotion(e) {
-  if (!running) return;
-  const r = e.rotationRate;
-  if (!r || r.beta === null) return;
-  gotData = true;
-  // rotationRate: beta=X軸まわり, gamma=Y軸まわり, alpha=Z軸まわり
-  push('x', r.beta); push('y', r.gamma); push('z', r.alpha);
-  AXES.forEach(ax => {
-    document.getElementById('val-' + ax).textContent =
-      buf[ax][buf[ax].length - 1].toFixed(1) + ' °/s';
-  });
-}
 
 function push(ax, v) {
   buf[ax].push(v);
@@ -177,7 +184,7 @@ function drawGraph(cv, arr, color, mIdx) {
   if (arr.length < 2) return;
 
   let min = Math.min(...arr), max = Math.max(...arr);
-  const pad = Math.max((max - min) * 0.15, 5);
+  const pad = Math.max((max - min) * 0.15, 2);
   min -= pad; max += pad;
 
   ctx.strokeStyle = '#2a2a2a';
@@ -188,7 +195,7 @@ function drawGraph(cv, arr, color, mIdx) {
     const v = min + (max - min) * i / steps;
     const y = H - ((v - min) / (max - min)) * H;
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    ctx.fillText(v.toFixed(0), 6, Math.min(Math.max(y - 4, 14), H - 4));
+    ctx.fillText(v.toFixed(1), 6, Math.min(Math.max(y - 4, 14), H - 4));
   }
   if (min < 0 && max > 0) {
     const y0 = H - ((0 - min) / (max - min)) * H;

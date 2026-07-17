@@ -89,7 +89,7 @@
   </div>
 
   <p id="err"></p>
-  <p class="hint" id="hint">▶ を押すと計測が始まります。グラフをタップすると拡大します。</p>
+  <p class="hint" id="hint">▶ で計測開始。<b>見出しをタップ</b>すると拡大、<b>グラフ上をタップ</b>するとその点の値が出ます（⏸ で止めると読みやすい）。</p>
 </main>
 
 <script>
@@ -105,19 +105,23 @@ const playBtn = document.getElementById('playBtn');
 const errEl = document.getElementById('err');
 const gravityCheck = document.getElementById('gravity');
 
-// ---- 拡大表示（phyphox風：グラフタップで単軸ズーム） ----
+// ---- 拡大表示（見出しタップ）と値の読み取り（グラフ面タップ） ----
+const marker = { x: null, y: null, z: null };
 AXES.forEach(ax => {
-  document.getElementById('card-' + ax).addEventListener('click', () => {
-    const card = document.getElementById('card-' + ax);
+  const card = document.getElementById('card-' + ax);
+  card.querySelector('.head').addEventListener('click', () => {
     if (document.body.classList.contains('zoom')) {
       document.body.classList.remove('zoom');
       card.classList.remove('zoomed');
-      document.getElementById('hint').textContent = '▶ を押すと計測が始まります。グラフをタップすると拡大します。';
     } else {
       document.body.classList.add('zoom');
       card.classList.add('zoomed');
-      document.getElementById('hint').textContent = 'もう一度タップすると一覧にもどります。';
     }
+  });
+  const cvEl = document.getElementById('cv-' + ax);
+  cvEl.addEventListener('click', (ev) => {
+    const rect = cvEl.getBoundingClientRect();
+    marker[ax] = Math.round((ev.clientX - rect.left) / rect.width * (N - 1));
   });
 });
 
@@ -172,10 +176,10 @@ function push(ax, v) {
 function draw() {
   requestAnimationFrame(draw);
   AXES.forEach(ax => drawGraph(
-    document.getElementById('cv-' + ax), buf[ax], COLORS[ax]));
+    document.getElementById('cv-' + ax), buf[ax], COLORS[ax], marker[ax]));
 }
 
-function drawGraph(cv, arr, color) {
+function drawGraph(cv, arr, color, mIdx) {
   const ctx = cv.getContext('2d');
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
@@ -213,6 +217,24 @@ function drawGraph(cv, arr, color) {
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
+
+  // タップした点の値（小数2桁）
+  if (mIdx !== null) {
+    const i = Math.min(mIdx, arr.length - 1);
+    const x = (i / (N - 1)) * W;
+    const y = H - ((arr[i] - min) / (max - min)) * H;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+    const label = arr[i].toFixed(2);
+    ctx.font = 'bold 16px sans-serif';
+    const tw = ctx.measureText(label).width;
+    const lx = Math.min(Math.max(x - tw / 2, 4), W - tw - 4);
+    const ly = y > 34 ? y - 14 : y + 28;
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(lx - 4, ly - 16, tw + 8, 22);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, lx, ly);
+  }
 }
 </script>
 </body>

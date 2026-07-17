@@ -67,6 +67,7 @@
   <a class="back" href="index.html" id="backLink">←</a>
   <div class="title">加速度</div>
   <button id="playBtn" title="計測開始">▶</button>
+  <button id="resetBtn" title="データを消す">🗑</button>
 </header>
 
 <main>
@@ -166,6 +167,17 @@ function onMotion(e) {
       buf[ax][buf[ax].length - 1].toFixed(2) + ' m/s²';
   });
 }
+
+// ---- リセット（phyphoxの🗑と同様：データだけ消す。計測の開始/停止状態は変えない） ----
+document.getElementById('resetBtn').addEventListener('click', () => {
+  AXES.forEach(ax => {
+    buf[ax].length = 0;
+    marker[ax] = null;
+    document.getElementById('val-' + ax).textContent = '--';
+    const c = document.getElementById('cv-' + ax);
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  });
+});
 
 function push(ax, v) {
   buf[ax].push(v);

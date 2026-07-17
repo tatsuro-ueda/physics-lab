@@ -74,6 +74,7 @@
   <a class="back" href="index.html">←</a>
   <div class="title">位置（GPS）</div>
   <button id="playBtn" title="計測開始">▶</button>
+  <button id="resetBtn" title="データを消す">🗑</button>
 </header>
 
 <main>
@@ -140,6 +141,25 @@ playBtn.addEventListener('click', () => {
   playBtn.textContent = '⏸';
   errEl.textContent = '';
   draw();
+});
+
+// リセット（データだけ消す。計測の開始/停止状態は変えない）
+document.getElementById('resetBtn').addEventListener('click', () => {
+  altBuf.length = 0; spdBuf.length = 0;
+  marker.alt = null; marker.spd = null;
+  totalDist = 0; lastPos = null;
+  document.getElementById('lat').textContent = '--';
+  document.getElementById('lon').textContent = '--';
+  document.getElementById('alt').innerHTML = '-- <small>m</small>';
+  document.getElementById('spd').innerHTML = '-- <small>m/s</small>';
+  document.getElementById('acc').innerHTML = '-- <small>m</small>';
+  document.getElementById('dist').innerHTML = '0 <small>m</small>';
+  document.getElementById('alt-range').textContent = '';
+  document.getElementById('spd-range').textContent = '';
+  ['cv-alt', 'cv-spd'].forEach(id => {
+    const c = document.getElementById(id);
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  });
 });
 
 function onPos(pos) {

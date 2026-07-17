@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音のスペクトル | 理科実験ラボ</title>
+<style>
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #101820;
+    color: #eee;
+    margin: 0;
+    padding: 16px;
+    text-align: center;
+  }
+  a.back { color: #8ac; text-decoration: none; float: left; }
+  h1 { font-size: 1.3rem; margin: 8px 0 16px; }
+  button {
+    font-size: 1.2rem;
+    padding: 14px 32px;
+    border-radius: 12px;
+    border: none;
+    background: #4a90d9;
+    color: #fff;
+    cursor: pointer;
+  }
+  button.stop { background: #d9534f; }
+  #peak {
+    font-size: 1.6rem;
+    margin: 12px 0;
+    font-variant-numeric: tabular-nums;
+    min-height: 2rem;
+  }
+  #peak small { font-size: 1rem; color: #9ab; }
+  canvas {
+    width: 100%;
+    max-width: 720px;
+    background: #000;
+    border-radius: 8px;
+    margin-top: 8px;
+  }
+  #err { color: #f88; }
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← もどる</a>
+<h1>🎵 音のスペクトル</h1>
+
+<button id="btn">マイクをON にする</button>
+<div id="peak"></div>
+<canvas id="cv" width="720" height="320"></canvas>
+<p id="err"></p>
+<p style="color:#789; font-size:0.85rem;">
+  横じく：音の高さ（周波数 Hz）／ 縦じく：音の強さ<br>
+  声を出したり、楽器を鳴らしたりしてみよう
+</p>
+
+<script>
+const btn = document.getElementById('btn');
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const peakEl = document.getElementById('peak');
+const errEl = document.getElementById('err');
+
+let audioCtx = null;
+let analyser = null;
+let stream = null;
+let running = false;
+
+const FFT_SIZE = 4096;
+const MAX_FREQ = 4000; // 表示する上限周波数（人の声や楽器の基音が見やすい範囲）
+
+btn.addEventListener('click', async () => {
+  if (running) { stopMic(); return; }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: {
+      echoCancellation: false, noiseSuppression: false, autoGainControl: false
+    }});
+  } catch (e) {
+    errEl.textContent = 'マイクが使えませんでした：' + e.message +
+      '（HTTPSで開いているか、許可したかを確認してください）';
+    return;
+  }
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const src = audioCtx.createMediaStreamSource(stream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = FFT_SIZE;
+  analyser.smoothingTimeConstant = 0.6;
+  src.connect(analyser);
+
+  running = true;
+  btn.textContent = 'マイクを OFF にする';
+  btn.classList.add('stop');
+  errEl.textContent = '';
+  draw();
+});
+
+function stopMic() {
+  running = false;
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (audioCtx) audioCtx.close();
+  btn.textContent = 'マイクをON にする';
+  btn.classList.remove('stop');
+  peakEl.textContent = '';
+  ctx.clearRect(0, 0, cv.width, cv.height);
+}
+
+function draw() {
+  if (!running) return;
+  requestAnimationFrame(draw);
+
+  const bins = analyser.frequencyBinCount;
+  const data = new Uint8Array(bins);
+  analyser.getByteFrequencyData(data);
+
+  const binHz = audioCtx.sampleRate / analyser.fftSize;
+  const maxBin = Math.min(bins, Math.floor(MAX_FREQ / binHz));
+
+  // ピーク周波数（いちばん強い成分）を探す
+  let peakI = 0, peakV = 0;
+  for (let i = 1; i < maxBin; i++) {
+    if (data[i] > peakV) { peakV = data[i]; peakI = i; }
+  }
+  if (peakV > 40) {
+    peakEl.innerHTML = Math.round(peakI * binHz) + ' <small>Hz</small>';
+  } else {
+    peakEl.innerHTML = '<small>（音を出してみよう）</small>';
+  }
+
+  // スペクトル描画
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const barW = cv.width / maxBin;
+  for (let i = 0; i < maxBin; i++) {
+    const h = (data[i] / 255) * cv.height;
+    const hue = 200 - (data[i] / 255) * 160; // 弱い=青, 強い=赤
+    ctx.fillStyle = `hsl(${hue}, 80%, 55%)`;
+    ctx.fillRect(i * barW, cv.height - h, Math.max(barW - 0.5, 0.5), h);
+  }
+
+  // 周波数の目もり（1000Hzごと）
+  ctx.fillStyle = '#89a';
+  ctx.font = '12px sans-serif';
+  for (let f = 1000; f < MAX_FREQ; f += 1000) {
+    const x = (f / binHz) * barW;
+    ctx.fillRect(x, 0, 1, cv.height);
+    ctx.fillText(f + 'Hz', x + 4, 14);
+  }
+}
+</script>
+</body>
+</html>

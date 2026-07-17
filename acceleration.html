@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>加速度センサー | 理科実験ラボ</title>
+<style>
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #101820;
+    color: #eee;
+    margin: 0;
+    padding: 16px;
+    text-align: center;
+  }
+  a.back { color: #8ac; text-decoration: none; float: left; }
+  h1 { font-size: 1.3rem; margin: 8px 0 16px; }
+  button {
+    font-size: 1.2rem;
+    padding: 14px 32px;
+    border-radius: 12px;
+    border: none;
+    background: #4a90d9;
+    color: #fff;
+    cursor: pointer;
+    margin: 4px;
+  }
+  button.stop { background: #d9534f; }
+  #values {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin: 16px 0;
+    font-variant-numeric: tabular-nums;
+  }
+  #values div { font-size: 1.1rem; }
+  #values .x { color: #f66; }
+  #values .y { color: #6d6; }
+  #values .z { color: #69f; }
+  canvas {
+    width: 100%;
+    max-width: 720px;
+    background: #000;
+    border-radius: 8px;
+  }
+  #err { color: #f88; }
+  label { color: #9ab; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← もどる</a>
+<h1>📈 加速度センサー</h1>
+
+<button id="btn">計測スタート</button>
+<label><input type="checkbox" id="gravity" checked> 重力をふくめる</label>
+
+<div id="values">
+  <div class="x">X: <span id="vx">--</span></div>
+  <div class="y">Y: <span id="vy">--</span></div>
+  <div class="z">Z: <span id="vz">--</span></div>
+</div>
+
+<canvas id="cv" width="720" height="320"></canvas>
+<p id="err"></p>
+<p style="color:#789; font-size:0.85rem;">
+  単位：m/s²（メートル毎秒毎秒）。静かに置くと、重力（約9.8）がどれかの軸に出ます。<br>
+  端末をふったり、かたむけたり、エレベーターに乗ったりして変化を見よう。<br>
+  <span style="color:#f66">■X</span>=左右　<span style="color:#6d6">■Y</span>=前後（上下）　<span style="color:#69f">■Z</span>=画面に垂直
+</p>
+
+<script>
+const btn = document.getElementById('btn');
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const errEl = document.getElementById('err');
+const vx = document.getElementById('vx'), vy = document.getElementById('vy'), vz = document.getElementById('vz');
+const gravityCheck = document.getElementById('gravity');
+
+let running = false;
+let gotData = false;
+const N = 360;                 // 表示するサンプル数
+const hist = { x: [], y: [], z: [] };
+const RANGE = 20;              // 縦じく ±20 m/s²
+
+btn.addEventListener('click', async () => {
+  if (running) { stop(); return; }
+
+  // iOS (13+) は明示的な許可が必要
+  if (typeof DeviceMotionEvent !== 'undefined' &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    try {
+      const res = await DeviceMotionEvent.requestPermission();
+      if (res !== 'granted') {
+        errEl.textContent = 'センサーの使用が許可されませんでした';
+        return;
+      }
+    } catch (e) {
+      errEl.textContent = '許可の取得に失敗：' + e.message + '（HTTPSで開いていますか？）';
+      return;
+    }
+  }
+
+  running = true;
+  gotData = false;
+  hist.x.length = hist.y.length = hist.z.length = 0;
+  window.addEventListener('devicemotion', onMotion);
+  btn.textContent = '計測ストップ';
+  btn.classList.add('stop');
+  errEl.textContent = '';
+  draw();
+
+  // 3秒待ってもデータが来なければ「センサーなし」と判断
+  setTimeout(() => {
+    if (running && !gotData) {
+      errEl.textContent = 'この端末では加速度センサーのデータが取れないようです（ノート型Chromebookなど、センサー非搭載の可能性）';
+    }
+  }, 3000);
+});
+
+function stop() {
+  running = false;
+  window.removeEventListener('devicemotion', onMotion);
+  btn.textContent = '計測スタート';
+  btn.classList.remove('stop');
+}
+
+function onMotion(e) {
+  const a = gravityCheck.checked ? e.accelerationIncludingGravity : e.acceleration;
+  if (!a || a.x === null) return;
+  gotData = true;
+  push(hist.x, a.x); push(hist.y, a.y); push(hist.z, a.z);
+  vx.textContent = a.x.toFixed(2);
+  vy.textContent = a.y.toFixed(2);
+  vz.textContent = a.z.toFixed(2);
+}
+
+function push(arr, v) {
+  arr.push(v);
+  if (arr.length > N) arr.shift();
+}
+
+function draw() {
+  if (!running) return;
+  requestAnimationFrame(draw);
+
+  ctx.clearRect(0, 0, cv.width, cv.height);
+
+  // 目もり線
+  ctx.strokeStyle = '#234';
+  ctx.fillStyle = '#89a';
+  ctx.font = '12px sans-serif';
+  for (let g = -RANGE; g <= RANGE; g += 10) {
+    const y = toY(g);
+    ctx.beginPath();
+    ctx.moveTo(0, y); ctx.lineTo(cv.width, y);
+    ctx.stroke();
+    ctx.fillText(g + '', 4, y - 3);
+  }
+
+  drawLine(hist.x, '#f66');
+  drawLine(hist.y, '#6d6');
+  drawLine(hist.z, '#69f');
+}
+
+function toY(v) {
+  return cv.height / 2 - (v / RANGE) * (cv.height / 2);
+}
+
+function drawLine(arr, color) {
+  if (arr.length < 2) return;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < arr.length; i++) {
+    const x = (i / (N - 1)) * cv.width;
+    const y = toY(arr[i]);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+</script>
+</body>
+</html>

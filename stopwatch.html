@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音響ストップウォッチ | 理科実験ラボ</title>
+<style>
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #101820;
+    color: #eee;
+    margin: 0;
+    padding: 16px;
+    text-align: center;
+  }
+  a.back { color: #8ac; text-decoration: none; float: left; }
+  h1 { font-size: 1.3rem; margin: 8px 0 16px; }
+  #time {
+    font-size: 4rem;
+    font-variant-numeric: tabular-nums;
+    margin: 24px 0;
+    letter-spacing: 2px;
+  }
+  #state {
+    font-size: 1.2rem;
+    min-height: 1.6rem;
+    margin-bottom: 16px;
+  }
+  .waiting  { color: #fc6; }
+  .measuring { color: #6f9; }
+  .done { color: #8cf; }
+  button {
+    font-size: 1.2rem;
+    padding: 14px 32px;
+    border-radius: 12px;
+    border: none;
+    background: #4a90d9;
+    color: #fff;
+    cursor: pointer;
+    margin: 4px;
+  }
+  button.stop { background: #d9534f; }
+  #level-wrap {
+    max-width: 480px;
+    margin: 24px auto;
+    text-align: left;
+  }
+  #level-bar {
+    height: 20px;
+    background: #223;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+  #level-fill {
+    height: 100%;
+    width: 0%;
+    background: #6f9;
+  }
+  #threshold-mark {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 2px;
+    background: #fc6;
+  }
+  label { font-size: 0.9rem; color: #9ab; }
+  input[type=range] { width: 100%; }
+  #err { color: #f88; }
+  #history {
+    max-width: 480px;
+    margin: 16px auto;
+    color: #9ab;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← もどる</a>
+<h1>⏱️ 音響ストップウォッチ</h1>
+
+<div id="time">0.000</div>
+<div id="state">「開始」を押すと、音を待ちます</div>
+
+<button id="btn">開始（音を待つ）</button>
+<button id="reset">リセット</button>
+
+<div id="level-wrap">
+  <label>いまの音の大きさ（黄色い線をこえるとスタート／ストップ）</label>
+  <div id="level-bar">
+    <div id="level-fill"></div>
+    <div id="threshold-mark"></div>
+  </div>
+  <label>反応する大きさ（しきい値）：<span id="th-val"></span></label>
+  <input type="range" id="th" min="0.05" max="0.8" step="0.01" value="0.25">
+</div>
+
+<div id="history"></div>
+<p id="err"></p>
+<p style="color:#789; font-size:0.85rem;">
+  使い方の例：手をパンとたたいてスタート → もう一度たたいてストップ。<br>
+  ものが落ちる音、ボールがはずむ音の間かくも測れます。
+</p>
+
+<script>
+const timeEl = document.getElementById('time');
+const stateEl = document.getElementById('state');
+const btn = document.getElementById('btn');
+const resetBtn = document.getElementById('reset');
+const fillEl = document.getElementById('level-fill');
+const thMark = document.getElementById('threshold-mark');
+const thSlider = document.getElementById('th');
+const thVal = document.getElementById('th-val');
+const errEl = document.getElementById('err');
+const historyEl = document.getElementById('history');
+
+let audioCtx = null, analyser = null, stream = null;
+let mode = 'idle';       // idle | armed | measuring | done
+let startTime = 0;       // audioCtx.currentTime ベース（高精度）
+let lastTrigger = -10;   // 連続トリガー防止
+let results = [];
+const LOCKOUT = 0.3;     // 秒。1回鳴ってから次を受けつけるまでの間
+
+function updateThUI() {
+  thVal.textContent = thSlider.value;
+  thMark.style.left = (parseFloat(thSlider.value) * 100) + '%';
+}
+thSlider.addEventListener('input', updateThUI);
+updateThUI();
+
+btn.addEventListener('click', async () => {
+  if (mode !== 'idle' && mode !== 'done') { // 計測を中断
+    setIdle();
+    return;
+  }
+  if (!audioCtx) {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: {
+        echoCancellation: false, noiseSuppression: false, autoGainControl: false
+      }});
+    } catch (e) {
+      errEl.textContent = 'マイクが使えませんでした：' + e.message;
+      return;
+    }
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    src.connect(analyser);
+    loop();
+  }
+  mode = 'armed';
+  lastTrigger = audioCtx.currentTime; // 押した直後の音を拾わないように
+  timeEl.textContent = '0.000';
+  stateEl.textContent = '🎤 最初の音を待っています…';
+  stateEl.className = 'waiting';
+  btn.textContent = '中断';
+  btn.classList.add('stop');
+  errEl.textContent = '';
+});
+
+resetBtn.addEventListener('click', () => {
+  results = [];
+  historyEl.textContent = '';
+  setIdle();
+});
+
+function setIdle() {
+  mode = 'idle';
+  timeEl.textContent = '0.000';
+  stateEl.textContent = '「開始」を押すと、音を待ちます';
+  stateEl.className = '';
+  btn.textContent = '開始（音を待つ）';
+  btn.classList.remove('stop');
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  if (!analyser) return;
+
+  const data = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(data);
+  let peak = 0;
+  for (let i = 0; i < data.length; i++) {
+    const a = Math.abs(data[i]);
+    if (a > peak) peak = a;
+  }
+  fillEl.style.width = Math.min(peak * 100, 100) + '%';
+  fillEl.style.background = peak >= parseFloat(thSlider.value) ? '#fc6' : '#6f9';
+
+  const now = audioCtx.currentTime;
+  const triggered = peak >= parseFloat(thSlider.value) && (now - lastTrigger) > LOCKOUT;
+
+  if (triggered && mode === 'armed') {
+    lastTrigger = now;
+    startTime = now;
+    mode = 'measuring';
+    stateEl.textContent = '⏱️ 計測中… 次の音で止まります';
+    stateEl.className = 'measuring';
+  } else if (triggered && mode === 'measuring') {
+    lastTrigger = now;
+    const elapsed = now - startTime;
+    mode = 'done';
+    timeEl.textContent = elapsed.toFixed(3);
+    stateEl.textContent = '✅ 計測しました（もう一度「開始」で再計測）';
+    stateEl.className = 'done';
+    btn.textContent = '開始（音を待つ）';
+    btn.classList.remove('stop');
+    results.push(elapsed);
+    historyEl.innerHTML = '記録：' +
+      results.map(r => r.toFixed(3) + ' 秒').join('、 ');
+  }
+
+  if (mode === 'measuring') {
+    timeEl.textContent = (now - startTime).toFixed(3);
+  }
+}
+</script>
+</body>
+</html>

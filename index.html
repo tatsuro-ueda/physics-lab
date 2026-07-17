@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>理科実験ラボ</title>
+<style>
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #f0f4f8;
+    margin: 0;
+    padding: 24px 16px;
+    color: #1a2b3c;
+  }
+  h1 { text-align: center; font-size: 1.6rem; }
+  p.lead { text-align: center; color: #556; }
+  .menu {
+    max-width: 480px;
+    margin: 24px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  a.card {
+    display: block;
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 2px solid transparent;
+  }
+  a.card:active { border-color: #4a90d9; }
+  .card .icon { font-size: 2rem; }
+  .card .title { font-size: 1.2rem; font-weight: bold; margin: 4px 0; }
+  .card .desc { font-size: 0.9rem; color: #667; }
+  .note {
+    max-width: 480px;
+    margin: 24px auto;
+    font-size: 0.8rem;
+    color: #789;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<h1>🔬 理科実験ラボ</h1>
+<p class="lead">実験をえらんでください</p>
+
+<div class="menu">
+  <a class="card" href="sound.html">
+    <div class="icon">🎵</div>
+    <div class="title">音のスペクトル</div>
+    <div class="desc">マイクで音をひろって、どんな高さの音が混ざっているか見てみよう</div>
+  </a>
+  <a class="card" href="stopwatch.html">
+    <div class="icon">⏱️</div>
+    <div class="title">音響ストップウォッチ</div>
+    <div class="desc">大きな音で自動的にスタート・ストップ。手で押すより正確に時間が測れる</div>
+  </a>
+  <a class="card" href="acceleration.html">
+    <div class="icon">📈</div>
+    <div class="title">加速度センサー</div>
+    <div class="desc">端末のゆれ・かたむき・動きをグラフで見てみよう（センサーがある端末のみ）</div>
+  </a>
+</div>
+
+<p class="note">
+  マイクやセンサーの使用許可を聞かれたら「許可」を押してください。<br>
+  加速度センサーがない端末（多くのノート型Chromebook）では、加速度の実験は動きません。
+</p>
+</body>
+</html>

@@ -167,6 +167,7 @@ playBtn.addEventListener('click', async () => {
     }, 3000);
     draw();
   }
+  AXES.forEach(ax => marker[ax] = null);   // 再開時はタップ値の表示を消す
   running = true;
   errEl.textContent = '';
   playBtn.textContent = '⏸';

@@ -138,6 +138,7 @@ playBtn.addEventListener('click', () => {
     maximumAge: 0,
     timeout: 15000
   });
+  marker.alt = null; marker.spd = null;   // 再開時はタップ値の表示を消す
   playBtn.textContent = '⏸';
   errEl.textContent = '';
   draw();

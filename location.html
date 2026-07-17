@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>位置（GPS） | 理科実験ラボ</title>
 <style>
-  :root { --phx-orange: #ffb300; }
+  :root { --phx-orange: #ffe000; }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -252,7 +252,7 @@ function drawGraph(cv, arr, color, rangeId, unit, mIdx) {
     const y = H - ((arr[i] - min) / (max - min)) * H;
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
-    const label = arr[i].toFixed(2);
+    const label = Number(arr[i].toPrecision(2)).toString();
     ctx.font = 'bold 16px sans-serif';
     const tw = ctx.measureText(label).width;
     const lx = Math.min(Math.max(x - tw / 2, 4), W - tw - 4);

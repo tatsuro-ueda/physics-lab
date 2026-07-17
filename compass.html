@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>コンパス（磁気センサー） | 理科実験ラボ</title>
 <style>
-  :root { --phx-orange: #ffb300; }
+  :root { --phx-orange: #ffe000; }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -167,7 +167,7 @@ function drawLoop() {
   }
 
   // 中央の固定針（端末の向き）
-  ctx.strokeStyle = '#ffb300';
+  ctx.strokeStyle = '#ffe000';
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(cx, cy + 20);
@@ -178,7 +178,7 @@ function drawLoop() {
   ctx.lineTo(cx - 8, cy - R + 34);
   ctx.lineTo(cx + 8, cy - R + 34);
   ctx.closePath();
-  ctx.fillStyle = '#ffb300';
+  ctx.fillStyle = '#ffe000';
   ctx.fill();
   ctx.lineWidth = 1;
 }

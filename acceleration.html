@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>加速度 | 理科実験ラボ</title>
 <style>
-  :root { --phx-orange: #ffb300; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
+  :root { --phx-orange: #ffe000; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -90,7 +90,7 @@
   </div>
 
   <p id="err"></p>
-  <p class="hint" id="hint">▶ で計測開始。<b>見出しをタップ</b>すると拡大、<b>グラフ上をタップ</b>するとその点の値が出ます（⏸ で止めると読みやすい）。</p>
+  <p class="hint" id="hint">▶ で計測開始。<b>線の上をタップ</b>するとその点の値、<b>線から離れた場所をタップ</b>すると拡大・縮小します（⏸ で止めると読みやすい）。</p>
 </main>
 
 <script>
@@ -106,23 +106,39 @@ const playBtn = document.getElementById('playBtn');
 const errEl = document.getElementById('err');
 const gravityCheck = document.getElementById('gravity');
 
-// ---- 拡大表示（見出しタップ）と値の読み取り（グラフ面タップ） ----
+// ---- タップ操作：線の近く→値を表示／それ以外→拡大・縮小 ----
 const marker = { x: null, y: null, z: null };
+const PAD_MIN = 0.5;      // drawGraphの余白と同じ値（座標計算を一致させる）
+const HIT_PX = 30;        // 「線の上」とみなす距離（canvas座標）
+
+function toggleZoom(card) {
+  if (document.body.classList.contains('zoom')) {
+    document.body.classList.remove('zoom');
+    card.classList.remove('zoomed');
+  } else {
+    document.body.classList.add('zoom');
+    card.classList.add('zoomed');
+  }
+}
+
 AXES.forEach(ax => {
   const card = document.getElementById('card-' + ax);
-  card.querySelector('.head').addEventListener('click', () => {
-    if (document.body.classList.contains('zoom')) {
-      document.body.classList.remove('zoom');
-      card.classList.remove('zoomed');
-    } else {
-      document.body.classList.add('zoom');
-      card.classList.add('zoomed');
-    }
-  });
+  card.querySelector('.head').addEventListener('click', () => toggleZoom(card));
   const cvEl = document.getElementById('cv-' + ax);
   cvEl.addEventListener('click', (ev) => {
     const rect = cvEl.getBoundingClientRect();
-    marker[ax] = Math.round((ev.clientX - rect.left) / rect.width * (N - 1));
+    const cx = (ev.clientX - rect.left) / rect.width * cvEl.width;
+    const cy = (ev.clientY - rect.top) / rect.height * cvEl.height;
+    const arr = buf[ax];
+    if (arr.length >= 2) {
+      let min = Math.min(...arr), max = Math.max(...arr);
+      const pad = Math.max((max - min) * 0.15, PAD_MIN);
+      min -= pad; max += pad;
+      const i = Math.min(Math.max(Math.round(cx / cvEl.width * (N - 1)), 0), arr.length - 1);
+      const ly = cvEl.height - ((arr[i] - min) / (max - min)) * cvEl.height;
+      if (Math.abs(cy - ly) < HIT_PX) { marker[ax] = i; return; }   // 線の上→値
+    }
+    toggleZoom(card);                                                // 線の外→拡大/縮小
   });
 });
 
@@ -199,7 +215,7 @@ function drawGraph(cv, arr, color, mIdx) {
 
   // 自動スケール（phyphoxと同様、データに合わせて伸縮）
   let min = Math.min(...arr), max = Math.max(...arr);
-  const pad = Math.max((max - min) * 0.15, 0.5);
+  const pad = Math.max((max - min) * 0.15, PAD_MIN);
   min -= pad; max += pad;
 
   // グリッドと目もり
@@ -230,14 +246,14 @@ function drawGraph(cv, arr, color, mIdx) {
   }
   ctx.stroke();
 
-  // タップした点の値（小数2桁）
+  // タップした点の値（有効数字2桁）
   if (mIdx !== null) {
     const i = Math.min(mIdx, arr.length - 1);
     const x = (i / (N - 1)) * W;
     const y = H - ((arr[i] - min) / (max - min)) * H;
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
-    const label = arr[i].toFixed(2);
+    const label = Number(arr[i].toPrecision(2)).toString();
     ctx.font = 'bold 16px sans-serif';
     const tw = ctx.measureText(label).width;
     const lx = Math.min(Math.max(x - tw / 2, 4), W - tw - 4);

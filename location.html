@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>位置（GPS） | 理科実験ラボ</title>
+<style>
+  :root { --phx-orange: #ff7e00; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #1a1a1a;
+    color: #eee;
+    margin: 0;
+  }
+  header {
+    background: var(--phx-orange);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    height: 52px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header a.back { color: #fff; text-decoration: none; font-size: 1.4rem; padding: 8px 12px; }
+  header .title { font-size: 1.1rem; font-weight: bold; flex: 1; }
+  header button {
+    background: none; border: none; color: #fff;
+    font-size: 1.5rem; padding: 8px 12px; cursor: pointer;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 8px; }
+  .values {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .vcard {
+    background: #2b2b2b;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 10px;
+    text-align: center;
+  }
+  .vcard .label { font-size: 0.8rem; color: #aaa; }
+  .vcard .num {
+    font-size: 1.3rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--phx-orange);
+  }
+  .vcard .num small { font-size: 0.8rem; color: #888; }
+  .card {
+    margin-bottom: 10px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .card .head {
+    background: #2b2b2b;
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+  }
+  .card canvas { display: block; width: 100%; height: 150px; background: #000; }
+  .hint { text-align: center; color: #888; font-size: 0.8rem; margin: 12px 0; }
+  #err { color: #f88; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="index.html">←</a>
+  <div class="title">位置（GPS）</div>
+  <button id="playBtn" title="計測開始">▶</button>
+</header>
+
+<main>
+  <div class="values">
+    <div class="vcard"><div class="label">緯度</div><div class="num" id="lat">--</div></div>
+    <div class="vcard"><div class="label">経度</div><div class="num" id="lon">--</div></div>
+    <div class="vcard"><div class="label">高度</div><div class="num" id="alt">-- <small>m</small></div></div>
+    <div class="vcard"><div class="label">速度</div><div class="num" id="spd">-- <small>m/s</small></div></div>
+    <div class="vcard"><div class="label">水平精度（誤差の目安）</div><div class="num" id="acc">-- <small>m</small></div></div>
+    <div class="vcard"><div class="label">移動きょり（合計）</div><div class="num" id="dist">0 <small>m</small></div></div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span style="color:#ff9500">高度の変化</span><span id="alt-range" style="color:#888"></span></div>
+    <canvas id="cv-alt" width="720" height="300"></canvas>
+  </div>
+  <div class="card">
+    <div class="head"><span style="color:#d4c400">速度の変化</span><span id="spd-range" style="color:#888"></span></div>
+    <canvas id="cv-spd" width="720" height="300"></canvas>
+  </div>
+
+  <p id="err"></p>
+  <p class="hint">
+    ▶ を押して位置情報を「許可」すると計測が始まります。<br>
+    屋内ではGPSがとどきにくく、誤差が大きくなります。散歩や坂道で試すと変化が見えます。
+  </p>
+</main>
+
+<script>
+const playBtn = document.getElementById('playBtn');
+const errEl = document.getElementById('err');
+let watchId = null;
+let lastPos = null;
+let totalDist = 0;
+const N = 200;
+const altBuf = [], spdBuf = [];
+
+playBtn.addEventListener('click', () => {
+  if (watchId !== null) {           // 停止
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    playBtn.textContent = '▶';
+    return;
+  }
+  if (!('geolocation' in navigator)) {
+    errEl.textContent = 'この端末・ブラウザでは位置情報が使えません';
+    return;
+  }
+  watchId = navigator.geolocation.watchPosition(onPos, onErr, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 15000
+  });
+  playBtn.textContent = '⏸';
+  errEl.textContent = '';
+  draw();
+});
+
+function onPos(pos) {
+  const c = pos.coords;
+  document.getElementById('lat').textContent = c.latitude.toFixed(6);
+  document.getElementById('lon').textContent = c.longitude.toFixed(6);
+  document.getElementById('alt').innerHTML =
+    (c.altitude === null ? '--' : c.altitude.toFixed(1)) + ' <small>m</small>';
+  document.getElementById('spd').innerHTML =
+    (c.speed === null ? '--' : c.speed.toFixed(1)) + ' <small>m/s</small>';
+  document.getElementById('acc').innerHTML = c.accuracy.toFixed(0) + ' <small>m</small>';
+
+  if (c.altitude !== null) { altBuf.push(c.altitude); if (altBuf.length > N) altBuf.shift(); }
+  if (c.speed !== null) { spdBuf.push(c.speed); if (spdBuf.length > N) spdBuf.shift(); }
+
+  // 移動きょりの積算（ハバースイン近似）
+  if (lastPos) {
+    const d = distMeters(lastPos.latitude, lastPos.longitude, c.latitude, c.longitude);
+    if (d > c.accuracy * 0.5) {     // 誤差のゆらぎは足さない
+      totalDist += d;
+      document.getElementById('dist').innerHTML = totalDist.toFixed(0) + ' <small>m</small>';
+      lastPos = c;
+    }
+  } else {
+    lastPos = c;
+  }
+}
+
+function onErr(e) {
+  const msg = { 1: '位置情報の使用が許可されませんでした', 2: '位置を取得できませんでした', 3: '取得がタイムアウトしました' };
+  errEl.textContent = msg[e.code] || e.message;
+}
+
+function distMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000, rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat/2)**2 +
+    Math.cos(lat1*rad) * Math.cos(lat2*rad) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function draw() {
+  if (watchId === null) return;
+  requestAnimationFrame(draw);
+  drawGraph(document.getElementById('cv-alt'), altBuf, '#ff9500', 'alt-range', 'm');
+  drawGraph(document.getElementById('cv-spd'), spdBuf, '#d4c400', 'spd-range', 'm/s');
+}
+
+function drawGraph(cv, arr, color, rangeId, unit) {
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  if (arr.length < 2) {
+    ctx.fillStyle = '#666';
+    ctx.font = '16px sans-serif';
+    ctx.fillText('データ待ち…（GPSは数秒〜数十秒かかります）', 20, H / 2);
+    return;
+  }
+
+  let min = Math.min(...arr), max = Math.max(...arr);
+  const pad = Math.max((max - min) * 0.15, 1);
+  min -= pad; max += pad;
+  document.getElementById(rangeId).textContent =
+    min.toFixed(0) + '〜' + max.toFixed(0) + ' ' + unit;
+
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.fillStyle = '#888';
+  ctx.font = '13px sans-serif';
+  for (let i = 0; i <= 4; i++) {
+    const v = min + (max - min) * i / 4;
+    const y = H - ((v - min) / (max - min)) * H;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.fillText(v.toFixed(1), 6, Math.min(Math.max(y - 4, 14), H - 4));
+  }
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < arr.length; i++) {
+    const x = (i / (N - 1)) * W;
+    const y = H - ((arr[i] - min) / (max - min)) * H;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+</script>
+</body>
+</html>

@@ -5,70 +5,120 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>理科実験ラボ</title>
 <style>
+  :root { --phx-orange: #ff7e00; }
+  * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
-    background: #f0f4f8;
+    background: #1a1a1a;
+    color: #eee;
     margin: 0;
-    padding: 24px 16px;
-    color: #1a2b3c;
   }
-  h1 { text-align: center; font-size: 1.6rem; }
-  p.lead { text-align: center; color: #556; }
-  .menu {
-    max-width: 480px;
-    margin: 24px auto;
+  header {
+    background: var(--phx-orange);
+    color: #fff;
     display: flex;
-    flex-direction: column;
-    gap: 16px;
+    align-items: center;
+    height: 52px;
+    padding: 0 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
-  a.card {
-    display: block;
-    background: #fff;
-    border-radius: 16px;
-    padding: 20px;
+  header .title { font-size: 1.2rem; font-weight: bold; }
+  main { max-width: 640px; margin: 0 auto; padding: 8px 0 24px; }
+  h2 {
+    font-size: 0.85rem;
+    color: var(--phx-orange);
+    margin: 20px 16px 6px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 4px;
+  }
+  a.item, div.item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 16px;
     text-decoration: none;
     color: inherit;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border: 2px solid transparent;
   }
-  a.card:active { border-color: #4a90d9; }
-  .card .icon { font-size: 2rem; }
-  .card .title { font-size: 1.2rem; font-weight: bold; margin: 4px 0; }
-  .card .desc { font-size: 0.9rem; color: #667; }
+  a.item:active { background: #2a2a2a; }
+  .icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--phx-orange);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+  }
+  .item .name { font-size: 1rem; }
+  .item .desc { font-size: 0.78rem; color: #999; }
+  div.item.disabled { opacity: 0.45; }
+  div.item.disabled .icon { background: #555; }
   .note {
-    max-width: 480px;
-    margin: 24px auto;
-    font-size: 0.8rem;
+    margin: 20px 16px;
+    font-size: 0.75rem;
     color: #789;
     text-align: center;
   }
 </style>
 </head>
 <body>
-<h1>🔬 理科実験ラボ</h1>
-<p class="lead">実験をえらんでください</p>
+<header><div class="title">🔬 理科実験ラボ</div></header>
 
-<div class="menu">
-  <a class="card" href="sound.html">
-    <div class="icon">🎵</div>
-    <div class="title">音のスペクトル</div>
-    <div class="desc">マイクで音をひろって、どんな高さの音が混ざっているか見てみよう</div>
-  </a>
-  <a class="card" href="stopwatch.html">
-    <div class="icon">⏱️</div>
-    <div class="title">音響ストップウォッチ</div>
-    <div class="desc">大きな音で自動的にスタート・ストップ。手で押すより正確に時間が測れる</div>
-  </a>
-  <a class="card" href="acceleration.html">
+<main>
+  <h2>センサー</h2>
+  <a class="item" href="acceleration.html">
     <div class="icon">📈</div>
-    <div class="title">加速度センサー</div>
-    <div class="desc">端末のゆれ・かたむき・動きをグラフで見てみよう（センサーがある端末のみ）</div>
+    <div><div class="name">加速度</div>
+    <div class="desc">ゆれ・かたむき・動きの加速度をX/Y/Z軸で記録</div></div>
   </a>
-</div>
+  <a class="item" href="gyroscope.html">
+    <div class="icon">🌀</div>
+    <div><div class="name">ジャイロスコープ</div>
+    <div class="desc">回転の速さ（°/s）をX/Y/Z軸で記録</div></div>
+  </a>
+  <a class="item" href="compass.html">
+    <div class="icon">🧭</div>
+    <div><div class="name">コンパス（磁気センサー）</div>
+    <div class="desc">方位を表示。磁石を近づける実験も</div></div>
+  </a>
+  <a class="item" href="location.html">
+    <div class="icon">📍</div>
+    <div><div class="name">位置（GPS）</div>
+    <div class="desc">緯度・経度・高度・速度・移動きょり</div></div>
+  </a>
 
-<p class="note">
-  マイクやセンサーの使用許可を聞かれたら「許可」を押してください。<br>
-  加速度センサーがない端末（多くのノート型Chromebook）では、加速度の実験は動きません。
-</p>
+  <h2>音</h2>
+  <a class="item" href="sound.html">
+    <div class="icon">🎵</div>
+    <div><div class="name">音のスペクトル</div>
+    <div class="desc">マイクで音をひろって周波数ごとの強さを表示</div></div>
+  </a>
+  <a class="item" href="stopwatch.html">
+    <div class="icon">⏱️</div>
+    <div><div class="name">音響ストップウォッチ</div>
+    <div class="desc">大きな音で自動スタート・ストップ</div></div>
+  </a>
+
+  <h2>ブラウザでは使えないセンサー</h2>
+  <div class="item disabled">
+    <div class="icon">🌡️</div>
+    <div><div class="name">気圧</div>
+    <div class="desc">Webブラウザに気圧センサーのAPIが無いため使えません（アプリ限定）</div></div>
+  </div>
+  <div class="item disabled">
+    <div class="icon">📏</div>
+    <div><div class="name">デプス（奥行き）</div>
+    <div class="desc">iPad/ChromebookのブラウザはWebXR深度に未対応のため使えません</div></div>
+  </div>
+
+  <p class="note">
+    マイクやセンサーの使用許可を聞かれたら「許可」を押してください。<br>
+    センサーが無い端末では、その実験は「データが取れない」と表示されます。
+  </p>
+</main>
 </body>
 </html>

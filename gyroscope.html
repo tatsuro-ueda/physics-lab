@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>加速度 | 理科実験ラボ</title>
+<title>ジャイロスコープ | 理科実験ラボ</title>
 <style>
   :root { --phx-orange: #ff7e00; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
   * { box-sizing: border-box; }
@@ -45,14 +45,12 @@
     background: #2b2b2b;
     text-align: center;
     font-size: 0.9rem;
-    padding: 5px;
     display: flex;
     justify-content: space-between;
     padding: 5px 10px;
   }
   .card .val { font-variant-numeric: tabular-nums; color: #bbb; }
   .card canvas { display: block; width: 100%; height: 150px; background: #000; }
-  /* 拡大表示 */
   body.zoom .card { display: none; }
   body.zoom .card.zoomed { display: block; }
   body.zoom .card.zoomed canvas { height: 60vh; }
@@ -64,27 +62,24 @@
 </head>
 <body>
 <header>
-  <a class="back" href="index.html" id="backLink">←</a>
-  <div class="title">加速度</div>
+  <a class="back" href="index.html">←</a>
+  <div class="title">ジャイロスコープ（回転の速さ）</div>
   <button id="playBtn" title="計測開始">▶</button>
 </header>
 
 <main>
-  <div class="controls">
-    <label><input type="checkbox" id="gravity" checked> 重力をふくめる</label>
-    　単位：m/s²
-  </div>
+  <div class="controls">単位：°/s（1秒あたりに回る角度）</div>
 
   <div class="card" id="card-x">
-    <div class="head"><span style="color:var(--ax-x)">加速度 X</span><span class="val" id="val-x">--</span></div>
+    <div class="head"><span style="color:var(--ax-x)">回転 X（前後にたおす）</span><span class="val" id="val-x">--</span></div>
     <canvas id="cv-x" width="720" height="300"></canvas>
   </div>
   <div class="card" id="card-y">
-    <div class="head"><span style="color:var(--ax-y)">加速度 Y</span><span class="val" id="val-y">--</span></div>
+    <div class="head"><span style="color:var(--ax-y)">回転 Y（左右にかたむける）</span><span class="val" id="val-y">--</span></div>
     <canvas id="cv-y" width="720" height="300"></canvas>
   </div>
   <div class="card" id="card-z">
-    <div class="head"><span style="color:var(--ax-z)">加速度 Z</span><span class="val" id="val-z">--</span></div>
+    <div class="head"><span style="color:var(--ax-z)">回転 Z（画面を回す）</span><span class="val" id="val-z">--</span></div>
     <canvas id="cv-z" width="720" height="300"></canvas>
   </div>
 
@@ -95,7 +90,7 @@
 <script>
 const AXES = ['x', 'y', 'z'];
 const COLORS = { x: '#ff9500', y: '#d4c400', z: '#e04040' };
-const N = 400;                     // 保持サンプル数
+const N = 400;
 const buf = { x: [], y: [], z: [] };
 let running = false;
 let listening = false;
@@ -103,9 +98,7 @@ let gotData = false;
 
 const playBtn = document.getElementById('playBtn');
 const errEl = document.getElementById('err');
-const gravityCheck = document.getElementById('gravity');
 
-// ---- 拡大表示（phyphox風：グラフタップで単軸ズーム） ----
 AXES.forEach(ax => {
   document.getElementById('card-' + ax).addEventListener('click', () => {
     const card = document.getElementById('card-' + ax);
@@ -121,15 +114,13 @@ AXES.forEach(ax => {
   });
 });
 
-// ---- 計測 ----
 playBtn.addEventListener('click', async () => {
-  if (running) {                    // 一時停止
+  if (running) {
     running = false;
     playBtn.textContent = '▶';
     return;
   }
   if (!listening) {
-    // iOS 13+ は明示的な許可が必要
     if (typeof DeviceMotionEvent !== 'undefined' &&
         typeof DeviceMotionEvent.requestPermission === 'function') {
       try {
@@ -142,7 +133,7 @@ playBtn.addEventListener('click', async () => {
     window.addEventListener('devicemotion', onMotion);
     listening = true;
     setTimeout(() => {
-      if (!gotData) errEl.textContent = 'この端末では加速度センサーのデータが取れないようです（センサー非搭載の可能性）';
+      if (!gotData) errEl.textContent = 'この端末ではジャイロスコープのデータが取れないようです（センサー非搭載の可能性）';
     }, 3000);
     draw();
   }
@@ -153,13 +144,14 @@ playBtn.addEventListener('click', async () => {
 
 function onMotion(e) {
   if (!running) return;
-  const a = gravityCheck.checked ? e.accelerationIncludingGravity : e.acceleration;
-  if (!a || a.x === null) return;
+  const r = e.rotationRate;
+  if (!r || r.beta === null) return;
   gotData = true;
-  push('x', a.x); push('y', a.y); push('z', a.z);
+  // rotationRate: beta=X軸まわり, gamma=Y軸まわり, alpha=Z軸まわり
+  push('x', r.beta); push('y', r.gamma); push('z', r.alpha);
   AXES.forEach(ax => {
     document.getElementById('val-' + ax).textContent =
-      buf[ax][buf[ax].length - 1].toFixed(2) + ' m/s²';
+      buf[ax][buf[ax].length - 1].toFixed(1) + ' °/s';
   });
 }
 
@@ -168,7 +160,6 @@ function push(ax, v) {
   if (buf[ax].length > N) buf[ax].shift();
 }
 
-// ---- 描画（自動スケール・グリッドつき） ----
 function draw() {
   requestAnimationFrame(draw);
   AXES.forEach(ax => drawGraph(
@@ -181,12 +172,10 @@ function drawGraph(cv, arr, color) {
   ctx.clearRect(0, 0, W, H);
   if (arr.length < 2) return;
 
-  // 自動スケール（phyphoxと同様、データに合わせて伸縮）
   let min = Math.min(...arr), max = Math.max(...arr);
-  const pad = Math.max((max - min) * 0.15, 0.5);
+  const pad = Math.max((max - min) * 0.15, 5);
   min -= pad; max += pad;
 
-  // グリッドと目もり
   ctx.strokeStyle = '#2a2a2a';
   ctx.fillStyle = '#888';
   ctx.font = '13px sans-serif';
@@ -195,9 +184,8 @@ function drawGraph(cv, arr, color) {
     const v = min + (max - min) * i / steps;
     const y = H - ((v - min) / (max - min)) * H;
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    ctx.fillText(v.toFixed(1), 6, Math.min(Math.max(y - 4, 14), H - 4));
+    ctx.fillText(v.toFixed(0), 6, Math.min(Math.max(y - 4, 14), H - 4));
   }
-  // ゼロ線を強調
   if (min < 0 && max > 0) {
     const y0 = H - ((0 - min) / (max - min)) * H;
     ctx.strokeStyle = '#555';

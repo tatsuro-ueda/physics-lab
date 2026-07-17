@@ -65,11 +65,11 @@
   <a class="back" href="index.html">←</a>
   <div class="title">ジャイロスコープ（回転の速さ）</div>
   <button id="playBtn" title="計測開始">▶</button>
-  <button id="resetBtn" title="データを消す">🗑</button>
+  <button id="resetBtn" title="計測を止めてデータを消す">🗑</button>
 </header>
 
 <main>
-  <div class="controls">単位：°/s（1秒あたりに回る角度）</div>
+  <div class="controls">単位：°/s（1秒あたりに回る角度）　横じく：経過時間（秒）</div>
 
   <div class="card" id="card-x">
     <div class="head"><span style="color:var(--ax-x)">回転 X（前後にたおす）</span><span class="val" id="val-x">--</span></div>
@@ -91,8 +91,10 @@
 <script>
 const AXES = ['x', 'y', 'z'];
 const COLORS = { x: '#ff9500', y: '#d4c400', z: '#e04040' };
-const N = 400;
-const buf = { x: [], y: [], z: [] };
+const buf = { x: [], y: [], z: [] };   // 値（全履歴を保持）
+const tbuf = [];                        // 経過時間（秒）。phyphox同様、時間軸を圧縮して全体を表示する
+const MAX_SAMPLES = 150000;             // 安全上限（約40分ぶん）
+let t0 = null;
 let running = false;
 let listening = false;
 let gotData = false;
@@ -115,6 +117,19 @@ function toggleZoom(card) {
   }
 }
 
+function timeSpan() {
+  return Math.max(tbuf.length ? tbuf[tbuf.length - 1] : 0, 2);
+}
+
+function nearestIndex(targetT) {
+  const len = tbuf.length;
+  let i = Math.min(Math.max(Math.round(targetT / timeSpan() * (len - 1)), 0), len - 1);
+  for (let j = Math.max(0, i - 30); j < Math.min(len, i + 30); j++) {
+    if (Math.abs(tbuf[j] - targetT) < Math.abs(tbuf[i] - targetT)) i = j;
+  }
+  return i;
+}
+
 AXES.forEach(ax => {
   const card = document.getElementById('card-' + ax);
   card.querySelector('.head').addEventListener('click', () => toggleZoom(card));
@@ -128,7 +143,7 @@ AXES.forEach(ax => {
       let min = Math.min(...arr), max = Math.max(...arr);
       const pad = Math.max((max - min) * 0.15, PAD_MIN);
       min -= pad; max += pad;
-      const i = Math.min(Math.max(Math.round(cx / cvEl.width * (N - 1)), 0), arr.length - 1);
+      const i = nearestIndex(cx / cvEl.width * timeSpan());
       const ly = cvEl.height - ((arr[i] - min) / (max - min)) * cvEl.height;
       if (Math.abs(cy - ly) < HIT_PX) { marker[ax] = i; return; }   // 線の上→値
     }
@@ -159,6 +174,8 @@ playBtn.addEventListener('click', async () => {
     }, 3000);
     draw();
   }
+  // 再開時：ポーズしていた時間を除いて時間軸を連続させる
+  if (tbuf.length) t0 = performance.now() / 1000 - tbuf[tbuf.length - 1];
   AXES.forEach(ax => marker[ax] = null);   // 再開時はタップ値の表示を消す
   running = true;
   errEl.textContent = '';
@@ -170,16 +187,28 @@ function onMotion(e) {
   const r = e.rotationRate;
   if (!r || r.beta === null) return;
   gotData = true;
+  const now = performance.now() / 1000;
+  if (t0 === null) t0 = now;
+  tbuf.push(now - t0);
   // rotationRate: beta=X軸まわり, gamma=Y軸まわり, alpha=Z軸まわり
-  push('x', r.beta); push('y', r.gamma); push('z', r.alpha);
+  buf.x.push(r.beta); buf.y.push(r.gamma); buf.z.push(r.alpha);
   AXES.forEach(ax => {
     document.getElementById('val-' + ax).textContent =
       buf[ax][buf[ax].length - 1].toFixed(1) + ' °/s';
   });
+  if (tbuf.length > MAX_SAMPLES) {
+    running = false;
+    playBtn.textContent = '▶';
+    errEl.textContent = '記録が長くなったので自動停止しました（🗑 で消去できます）';
+  }
 }
 
-// ---- リセット（phyphoxの🗑と同様：データだけ消す。計測の開始/停止状態は変えない） ----
+// リセット：計測を止めてデータを消す
 document.getElementById('resetBtn').addEventListener('click', () => {
+  running = false;
+  playBtn.textContent = '▶';
+  t0 = null;
+  tbuf.length = 0;
   AXES.forEach(ax => {
     buf[ax].length = 0;
     marker[ax] = null;
@@ -189,15 +218,17 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   });
 });
 
-function push(ax, v) {
-  buf[ax].push(v);
-  if (buf[ax].length > N) buf[ax].shift();
-}
-
+// 描画（phyphox方式：時間軸を圧縮して全履歴を表示）
 function draw() {
   requestAnimationFrame(draw);
   AXES.forEach(ax => drawGraph(
     document.getElementById('cv-' + ax), buf[ax], COLORS[ax], marker[ax]));
+}
+
+function pickTimeStep(span) {
+  const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+  for (const s of steps) if (span / s <= 8) return s;
+  return 1200;
 }
 
 function drawGraph(cv, arr, color, mIdx) {
@@ -206,44 +237,54 @@ function drawGraph(cv, arr, color, mIdx) {
   ctx.clearRect(0, 0, W, H);
   if (arr.length < 2) return;
 
+  const span = timeSpan();
+
   let min = Math.min(...arr), max = Math.max(...arr);
   const pad = Math.max((max - min) * 0.15, PAD_MIN);
   min -= pad; max += pad;
+  const toX = t => (t / span) * W;
+  const toY = v => H - ((v - min) / (max - min)) * H;
 
   ctx.strokeStyle = '#2a2a2a';
   ctx.fillStyle = '#888';
   ctx.font = '13px sans-serif';
-  const steps = 4;
-  for (let i = 0; i <= steps; i++) {
-    const v = min + (max - min) * i / steps;
-    const y = H - ((v - min) / (max - min)) * H;
+  for (let i = 0; i <= 4; i++) {
+    const v = min + (max - min) * i / 4;
+    const y = toY(v);
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     ctx.fillText(v.toFixed(0), 6, Math.min(Math.max(y - 4, 14), H - 4));
   }
+  const tStep = pickTimeStep(span);
+  for (let t = tStep; t < span; t += tStep) {
+    const x = toX(t);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    ctx.fillText((tStep < 1 ? t.toFixed(1) : Math.round(t)) + 's', x + 4, H - 6);
+  }
   if (min < 0 && max > 0) {
-    const y0 = H - ((0 - min) / (max - min)) * H;
+    const y0 = toY(0);
     ctx.strokeStyle = '#555';
     ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(W, y0); ctx.stroke();
   }
 
+  const len = arr.length;
+  const stride = Math.max(1, Math.floor(len / W));
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  for (let i = 0; i < arr.length; i++) {
-    const x = (i / (N - 1)) * W;
-    const y = H - ((arr[i] - min) / (max - min)) * H;
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  ctx.moveTo(toX(tbuf[0]), toY(arr[0]));
+  for (let i = stride; i < len; i += stride) {
+    ctx.lineTo(toX(tbuf[i]), toY(arr[i]));
   }
+  ctx.lineTo(toX(tbuf[len - 1]), toY(arr[len - 1]));
   ctx.stroke();
 
   // タップした点の値（有効数字2桁）
-  if (mIdx !== null) {
-    const i = Math.min(mIdx, arr.length - 1);
-    const x = (i / (N - 1)) * W;
-    const y = H - ((arr[i] - min) / (max - min)) * H;
+  if (mIdx !== null && mIdx < len) {
+    const x = toX(tbuf[mIdx]);
+    const y = toY(arr[mIdx]);
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
-    const label = Number(arr[i].toPrecision(2)).toString();
+    const label = Number(arr[mIdx].toPrecision(2)).toString();
     ctx.font = 'bold 16px sans-serif';
     const tw = ctx.measureText(label).width;
     const lx = Math.min(Math.max(x - tw / 2, 4), W - tw - 4);

@@ -109,16 +109,33 @@ const errEl = document.getElementById('err');
 let watchId = null;
 let lastPos = null;
 let totalDist = 0;
-const N = 200;
-const altBuf = [], spdBuf = [];
+const altBuf = [], spdBuf = [];   // 値（全履歴を保持）
+const altT = [], spdT = [];       // 経過時間（秒）。phyphox同様、時間軸を圧縮して全体を表示する
+let t0 = null;
 
 // グラフ面タップでその点の値を表示
 const marker = { alt: null, spd: null };
+const SERIES = { alt: { buf: altBuf, t: altT }, spd: { buf: spdBuf, t: spdT } };
+
+function spanOf(tArr) {
+  return Math.max(tArr.length ? tArr[tArr.length - 1] : 0, 10);
+}
+
+function nearestIndex(tArr, targetT) {
+  let best = 0;
+  for (let j = 1; j < tArr.length; j++) {
+    if (Math.abs(tArr[j] - targetT) < Math.abs(tArr[best] - targetT)) best = j;
+  }
+  return best;
+}
+
 [['alt', 'cv-alt'], ['spd', 'cv-spd']].forEach(([key, id]) => {
   const cvEl = document.getElementById(id);
   cvEl.addEventListener('click', (ev) => {
     const rect = cvEl.getBoundingClientRect();
-    marker[key] = Math.round((ev.clientX - rect.left) / rect.width * (N - 1));
+    const s = SERIES[key];
+    if (s.t.length < 2) return;
+    marker[key] = nearestIndex(s.t, (ev.clientX - rect.left) / rect.width * spanOf(s.t));
   });
 });
 
@@ -138,15 +155,23 @@ playBtn.addEventListener('click', () => {
     maximumAge: 0,
     timeout: 15000
   });
+  // 再開時：ポーズしていた時間を除いて時間軸を連続させる
+  const lastT = Math.max(altT.length ? altT[altT.length - 1] : 0,
+                         spdT.length ? spdT[spdT.length - 1] : 0);
+  if (lastT) t0 = performance.now() / 1000 - lastT;
   marker.alt = null; marker.spd = null;   // 再開時はタップ値の表示を消す
   playBtn.textContent = '⏸';
   errEl.textContent = '';
   draw();
 });
 
-// リセット（データだけ消す。計測の開始/停止状態は変えない）
+// リセット：計測を止めてデータを消す
 document.getElementById('resetBtn').addEventListener('click', () => {
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  playBtn.textContent = '▶';
+  t0 = null;
   altBuf.length = 0; spdBuf.length = 0;
+  altT.length = 0; spdT.length = 0;
   marker.alt = null; marker.spd = null;
   totalDist = 0; lastPos = null;
   document.getElementById('lat').textContent = '--';
@@ -173,8 +198,11 @@ function onPos(pos) {
     (c.speed === null ? '--' : c.speed.toFixed(1)) + ' <small>m/s</small>';
   document.getElementById('acc').innerHTML = c.accuracy.toFixed(0) + ' <small>m</small>';
 
-  if (c.altitude !== null) { altBuf.push(c.altitude); if (altBuf.length > N) altBuf.shift(); }
-  if (c.speed !== null) { spdBuf.push(c.speed); if (spdBuf.length > N) spdBuf.shift(); }
+  const nowS = performance.now() / 1000;
+  if (t0 === null) t0 = nowS;
+  const t = nowS - t0;
+  if (c.altitude !== null) { altBuf.push(c.altitude); altT.push(t); }
+  if (c.speed !== null) { spdBuf.push(c.speed); spdT.push(t); }
 
   // 移動きょりの積算（ハバースイン近似）
   if (lastPos) {
@@ -205,11 +233,18 @@ function distMeters(lat1, lon1, lat2, lon2) {
 function draw() {
   if (watchId === null) return;
   requestAnimationFrame(draw);
-  drawGraph(document.getElementById('cv-alt'), altBuf, '#ff9500', 'alt-range', 'm', marker.alt);
-  drawGraph(document.getElementById('cv-spd'), spdBuf, '#d4c400', 'spd-range', 'm/s', marker.spd);
+  drawGraph(document.getElementById('cv-alt'), altT, altBuf, '#ff9500', 'alt-range', 'm', marker.alt);
+  drawGraph(document.getElementById('cv-spd'), spdT, spdBuf, '#d4c400', 'spd-range', 'm/s', marker.spd);
 }
 
-function drawGraph(cv, arr, color, rangeId, unit, mIdx) {
+// 時間軸の目もり幅を選ぶ（画面内に2〜8本になるように）
+function pickTimeStep(span) {
+  const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+  for (const s of steps) if (span / s <= 8) return s;
+  return 1200;
+}
+
+function drawGraph(cv, tArr, arr, color, rangeId, unit, mIdx) {
   const ctx = cv.getContext('2d');
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
@@ -226,31 +261,42 @@ function drawGraph(cv, arr, color, rangeId, unit, mIdx) {
   document.getElementById(rangeId).textContent =
     min.toFixed(0) + '〜' + max.toFixed(0) + ' ' + unit;
 
+  const span = spanOf(tArr);
+  const toX = t => (t / span) * W;
+  const toY = v => H - ((v - min) / (max - min)) * H;
+
   ctx.strokeStyle = '#2a2a2a';
   ctx.fillStyle = '#888';
   ctx.font = '13px sans-serif';
   for (let i = 0; i <= 4; i++) {
     const v = min + (max - min) * i / 4;
-    const y = H - ((v - min) / (max - min)) * H;
+    const y = toY(v);
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     ctx.fillText(v.toFixed(1), 6, Math.min(Math.max(y - 4, 14), H - 4));
+  }
+  // 縦グリッド（時間）
+  const tStep = pickTimeStep(span);
+  for (let t = tStep; t < span; t += tStep) {
+    const x = toX(t);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    ctx.fillText(Math.round(t) + 's', x + 4, H - 6);
   }
 
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.beginPath();
   for (let i = 0; i < arr.length; i++) {
-    const x = (i / (N - 1)) * W;
-    const y = H - ((arr[i] - min) / (max - min)) * H;
+    const x = toX(tArr[i]);
+    const y = toY(arr[i]);
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
 
-  // タップした点の値（小数2桁）
-  if (mIdx !== null) {
-    const i = Math.min(mIdx, arr.length - 1);
-    const x = (i / (N - 1)) * W;
-    const y = H - ((arr[i] - min) / (max - min)) * H;
+  // タップした点の値（有効数字2桁）
+  if (mIdx !== null && mIdx < arr.length) {
+    const i = mIdx;
+    const x = toX(tArr[i]);
+    const y = toY(arr[i]);
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
     const label = Number(arr[i].toPrecision(2)).toString();

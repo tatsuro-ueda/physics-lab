@@ -110,8 +110,10 @@ playBtn.addEventListener('click', async () => {
   playBtn.textContent = '⏸';
 });
 
-// リセット（表示だけ消す。計測の開始/停止状態は変えない）
+// リセット：計測を止めて表示を消す
 document.getElementById('resetBtn').addEventListener('click', () => {
+  running = false;
+  playBtn.textContent = '▶';
   heading = null;
   degEl.textContent = '--°';
   dirEl.textContent = '';

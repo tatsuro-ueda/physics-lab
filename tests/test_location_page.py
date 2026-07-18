@@ -3,6 +3,7 @@ from pathlib import Path
 
 
 LOCATION_SOURCE = Path(__file__).parents[1] / "src" / "location.html"
+LOCATION_BUILD = Path(__file__).parents[1] / "location.html"
 
 
 class LocationPageSourceTest(unittest.TestCase):
@@ -15,6 +16,12 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertIn('<script src="driver.js"></script>', source)
         self.assertIn('<script src="tutorial.js"></script>', source)
         self.assertIn('<script src="tour.js"></script>', source)
+
+    def test_generated_location_page_has_learning_hooks(self):
+        generated = LOCATION_BUILD.read_text(encoding="utf-8")
+
+        self.assertIn('id="missionBtn"', generated)
+        self.assertIn('id="tutorialMount"', generated)
 
 
 if __name__ == "__main__":

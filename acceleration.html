@@ -57,11 +57,28 @@
   body.zoom .card.zoomed { display: block; }
   body.zoom .card.zoomed .head { font-size: 1.1rem; }
   .hint { text-align: center; color: #888; font-size: 0.8rem; margin: 12px 0; }
-  .controls { text-align: center; margin: 8px 0; color: #aaa; font-size: 0.9rem; }
-  /* 表示モード切替タブ（xyz / |a|）。選択中は黄色、それ以外は暗いグレー。 */
-  .modes { display: inline-flex; gap: 0; margin-right: 12px; border: 1px solid #333; border-radius: 6px; overflow: hidden; }
-  .modes button { background: #222; color: #bbb; border: none; padding: 6px 14px; font-size: 0.95rem; cursor: pointer; }
-  .modes button.active { background: var(--phx-orange); color: #1a1a1a; font-weight: bold; }
+  /* ヒントは通常時と拡大時で文言を切り替える（拡大中は「縮小」の案内になる） */
+  .hint .hint-zoom { display: none; }
+  body.zoom .hint .hint-plain { display: none; }
+  body.zoom .hint .hint-zoom { display: inline; }
+  /* タブ（phyphox風・位置ページと同じ作り） */
+  .tabs {
+    display: flex;
+    background: #222;
+    position: sticky;
+    top: 52px;
+    z-index: 9;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    color: #999;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    font-size: 0.95rem;
+  }
+  .tab.active { color: var(--phx-orange); border-bottom-color: var(--phx-orange); }
   #err { color: #f88; text-align: center; }
   /* 🔰チュートリアルの見た目は tutorial.js（共通エンジン）が持つ */
 </style>
@@ -75,16 +92,13 @@
   <button id="missionBtn" title="チュートリアル（グラフの読み方を体験で学ぶ）">🔰</button>
 </header>
 
-<main>
-  <div class="controls">
-    <span class="modes">
-      <button id="modeXYZ" class="active" title="x/y/z 3方向の成分を表示">xyz</button>
-      <button id="modeAbs" title="加速度ベクトルの大きさ |a|=√(x²+y²+z²)">|a|</button>
-    </span>
-    <label><input type="checkbox" id="gravity"> 重力をふくめる</label>
-    　単位：m/s²
-  </div>
+<div class="tabs">
+  <div class="tab active" data-tab="comp" title="x/y/z 3方向の成分（重力なし）">各成分</div>
+  <div class="tab" data-tab="abs" title="加速度ベクトルの大きさ |a|=√(x²+y²+z²)（重力なし）">絶対値</div>
+  <div class="tab" data-tab="long" title="重力をふくめた x/y/z 3成分（乗り物などの長時間観察向け）">長時間</div>
+</div>
 
+<main>
   <div id="tutorialMount"></div>   <!-- 🔰チュートリアルのパネルはここに tutorial.js が差し込む -->
 
   <div class="card" id="card-x">
@@ -105,7 +119,7 @@
   </div>
 
   <p id="err"></p>
-  <p class="hint" id="hint"><b>線をタップ</b>＝値、<b>まわりをタップ</b>＝拡大</p>
+  <p class="hint" id="hint"><span class="hint-plain"><b>グラフをタップ</b>＝拡大</span><span class="hint-zoom"><b>線をタップ</b>＝値、<b>まわりをタップ</b>＝縮小</span></p>
 </main>
 
 <script>
@@ -784,8 +798,7 @@ const lab = createXYZLab({
       }
     }
     motionHandler = (e) => {
-      const a = document.getElementById('gravity').checked
-        ? e.accelerationIncludingGravity : e.acceleration;
+      const a = includeGravity ? e.accelerationIncludingGravity : e.acceleration;
       if (a && a.x !== null) lab.push(a.x * IOS_SIGN, a.y * IOS_SIGN, a.z * IOS_SIGN);
       tut.tick(e);
     };
@@ -798,18 +811,24 @@ const lab = createXYZLab({
 // 他のタブ・アプリに切り替えたら計測を止め、センサーを手放す（戻ってきても停止のまま）
 document.addEventListener('visibilitychange', () => { if (document.hidden) lab.release(); });
 
-// ---- 表示モード切替（xyz ⇔ |a|）----
-// phyphox の「絶対値」モードと同じく、3成分の大きさ√(x²+y²+z²) を1本のグラフで見せる。
-// 重力を含む/含まないの切替は共通のチェックで、|a|モードでも有効（自由落下で |a|≒0 の観察に必要）。
-const modeXYZBtn = document.getElementById('modeXYZ');
-const modeAbsBtn = document.getElementById('modeAbs');
-function switchMode(m) {
-  lab.setMode(m);
-  modeXYZBtn.classList.toggle('active', m === 'xyz');
-  modeAbsBtn.classList.toggle('active', m === 'abs');
-}
-modeXYZBtn.addEventListener('click', () => switchMode('xyz'));
-modeAbsBtn.addEventListener('click', () => switchMode('abs'));
+// ---- タブ切り替え（各成分 / 絶対値 / 長時間）----
+// 各成分＝重力なしxyz、絶対値＝重力なし|a|（自由落下で|a|≒0の観察用）、
+// 長時間＝重力をふくめたxyz（電車・バスなど乗り物での長時間観察向け。静止時にzへ約9.8が乗る）。
+let includeGravity = false;
+const TABS = {
+  comp: { mode: 'xyz', gravity: false },
+  abs:  { mode: 'abs', gravity: false },
+  long: { mode: 'xyz', gravity: true },
+};
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const t = TABS[tab.dataset.tab];
+    includeGravity = t.gravity;
+    lab.setMode(t.mode);
+  });
+});
 
 // ---- チュートリアルのステップ定義（判定だけ書く。器は tutorial.js） ----
 // 「どの軸？」問題：間違えたら次の方向へ差し替え（tutorialは上→右→下→左で循環）。

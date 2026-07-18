@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>加速度 | タブレット物理実験ラボ</title>
+<link rel="stylesheet" href="driver.css">
 <style>
   :root { --phx-orange: #ffe000; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
   * { box-sizing: border-box; }
@@ -327,6 +328,8 @@ document.getElementById('playBtn').addEventListener('click', () => setTimeout(()
 setInterval(() => tut.tick(null), 200);
 
 </script>
+<script src="driver.js"></script>
+<script src="tour.js"></script>
 <script src="orientation-guard.js"></script>
 </body>
 </html>

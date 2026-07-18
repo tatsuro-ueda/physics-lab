@@ -140,6 +140,7 @@ const errEl = document.getElementById('err');
 const historyEl = document.getElementById('history');
 
 let audioCtx = null, analyser = null, stream = null;
+let looping = false;     // loop() の二重起動を防ぐ（フォーカス外れ→再開時）
 let mode = 'idle';       // idle | armed | measuring | done
 let startTime = 0;       // audioCtx.currentTime ベース（高精度）
 let lastTrigger = -10;   // 連続トリガー防止
@@ -174,7 +175,7 @@ btn.addEventListener('click', async () => {
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 1024;
     src.connect(analyser);
-    loop();
+    if (!looping) { looping = true; loop(); }   // 既に回っていれば二重起動しない
   }
   mode = 'armed';
   lastTrigger = audioCtx.currentTime;
@@ -280,6 +281,13 @@ const STEPS = [
   () => ({ html: () => '6〜8秒のあいだで止めてみよう。拍手する', on: 'measuring' }),
   () => ({ html: () => '6〜8秒のあいだで止めてみよう。良いタイミングでもういちど拍手する',
            on: 'done', check: (el) => el >= 6 && el <= 8, fail: (el) => (el < 6 ? 'もう少し長く' : 'もう少し短く') }),
+  // 環境調整（スライダーを右へ動かしたら次へ）。開始時点の値を基準に、そこから右へ増えたら合格。
+  () => { const base = parseFloat(thSlider.value);
+    return { html: () => 'まわりが騒がしいときは「反応する大きさ（しきい値）」を右へ動かして下さい（やってみる）',
+             on: 'slider-th', check: () => parseFloat(thSlider.value) >= base + 0.05, fail: () => '右へ動かしてね' }; },
+  () => { const base = parseFloat(echoSlider.value);
+    return { html: () => 'ストップウォッチがすぐ止まるときは、「反響を無視する時間」を右へ動かして下さい（やってみる）',
+             on: 'slider-echo', check: () => parseFloat(echoSlider.value) >= base + 0.1, fail: () => '右へ動かしてね' }; },
 ];
 const MORE = [ () => { const r = rand(RANGE_POOL); return rangeStep(r[0], r[1]); } ];
 
@@ -290,6 +298,20 @@ const tut = createTutorial({
   steps: STEPS,
   moreSteps: MORE,
   completeText: '🎉 チュートリアル完了！時間の測り方をマスターしたね',
+});
+
+// スライダー操作をチュートリアルへ通知（環境調整ステップ用）
+thSlider.addEventListener('input', () => tut.event('slider-th'));
+echoSlider.addEventListener('input', () => tut.event('slider-echo'));
+
+// 別タブ・別アプリに移ってフォーカスが外れたら、マイクを手放して計測をidleへ戻す
+// （チュートリアルの進捗 localStorage は残す）。
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
+  analyser = null;
+  setIdle();
 });
 </script>
 </body>

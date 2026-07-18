@@ -102,7 +102,7 @@
     let stepIndex = 0;
     try { stepIndex = Math.max(0, Math.min(cfg.steps.length, parseInt(localStorage.getItem(M_KEY) || '0', 10))); } catch (e) {}
     function save() { try { localStorage.setItem(M_KEY, String(stepIndex)); } catch (e) {} }
-    function prefix() { return mode === 'tutorial' ? (stepIndex + 1) + '. ' : '🔁 '; }
+    function prefix() { return mode === 'tutorial' ? '(' + (stepIndex + 1) + ') ' : '🔁 '; }
 
     function renderDots() {
       if (mode !== 'tutorial') { mDots.innerHTML = ''; return; }

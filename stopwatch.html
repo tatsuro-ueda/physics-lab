@@ -80,7 +80,7 @@
 <a class="back" href="stopwatch.html" download title="このページのHTMLファイルをダウンロード" style="float: right;">⬇ HTML</a>
 <h1>⏱️ 音響ストップウォッチ</h1>
 
-<div id="time">0.000</div>
+<div id="time">0.00</div>
 <div id="state">「開始」を押すと、音を待ちます</div>
 
 <button id="btn">開始（音を待つ）</button>
@@ -152,7 +152,7 @@ btn.addEventListener('click', async () => {
   }
   mode = 'armed';
   lastTrigger = audioCtx.currentTime; // 押した直後の音を拾わないように
-  timeEl.textContent = '0.000';
+  timeEl.textContent = '0.00';
   stateEl.textContent = '🎤 最初の音を待っています…';
   stateEl.className = 'waiting';
   btn.textContent = '中断';
@@ -168,7 +168,7 @@ resetBtn.addEventListener('click', () => {
 
 function setIdle() {
   mode = 'idle';
-  timeEl.textContent = '0.000';
+  timeEl.textContent = '0.00';
   stateEl.textContent = '「開始」を押すと、音を待ちます';
   stateEl.className = '';
   btn.textContent = '開始（音を待つ）';
@@ -202,18 +202,18 @@ function loop() {
     lastTrigger = now;
     const elapsed = now - startTime;
     mode = 'done';
-    timeEl.textContent = elapsed.toFixed(3);
+    timeEl.textContent = elapsed.toFixed(2);
     stateEl.textContent = '✅ 計測しました（もう一度「開始」で再計測）';
     stateEl.className = 'done';
     btn.textContent = '開始（音を待つ）';
     btn.classList.remove('stop');
     results.push(elapsed);
     historyEl.innerHTML = '記録：' +
-      results.map(r => r.toFixed(3) + ' 秒').join('、 ');
+      results.map(r => r.toFixed(2) + ' 秒').join('、 ');
   }
 
   if (mode === 'measuring') {
-    timeEl.textContent = (now - startTime).toFixed(3);
+    timeEl.textContent = (now - startTime).toFixed(2);
   }
 }
 </script>

@@ -144,8 +144,14 @@
     <canvas id="cv-y" width="720" height="300"></canvas>
   </div>
   <div class="card visible" id="card-z" data-tab="pos">
-    <div class="head"><span style="color:var(--ax-z)">変位 Z（アプリでは鉛直方向を正）</span><span class="val" id="val-z">--</span></div>
+    <div class="head"><span style="color:var(--ax-z)">変位 Z（アプリでは鉛直上向きを正）</span><span class="val" id="val-z">--</span></div>
     <canvas id="cv-z" width="720" height="300"></canvas>
+  </div>
+
+  <!-- 移動のようす（自前描画のトラック地図。外部ライブラリ・ネット接続なしで動く） -->
+  <div class="card visible" id="card-map" data-tab="pos">
+    <div class="head"><span style="color:#a8c26a">移動のようす（北が上）</span><span class="val" id="map-span"></span></div>
+    <canvas id="cv-map" width="720" height="400" style="height:200px"></canvas>
   </div>
 
   <!-- 速度タブ：変位の変化から計算 -->
@@ -158,7 +164,7 @@
     <canvas id="cv-vy" width="720" height="300"></canvas>
   </div>
   <div class="card" id="card-vz" data-tab="spd">
-    <div class="head"><span style="color:var(--ax-z)">速度 Z（アプリでは鉛直方向を正）</span><span class="val" id="val-vz">--</span></div>
+    <div class="head"><span style="color:var(--ax-z)">速度 Z（アプリでは鉛直上向きを正）</span><span class="val" id="val-vz">--</span></div>
     <canvas id="cv-vz" width="720" height="300"></canvas>
   </div>
 
@@ -172,7 +178,7 @@
     <canvas id="cv-ay" width="720" height="300"></canvas>
   </div>
   <div class="card" id="card-az" data-tab="acc">
-    <div class="head"><span style="color:var(--ax-z)">加速度 Z（アプリでは鉛直方向を正）</span><span class="val" id="val-az">--</span></div>
+    <div class="head"><span style="color:var(--ax-z)">加速度 Z（アプリでは鉛直上向きを正）</span><span class="val" id="val-az">--</span></div>
     <canvas id="cv-az" width="720" height="300"></canvas>
   </div>
 
@@ -203,6 +209,7 @@ KEYS.forEach(k => marker[k] = null);
 
 const playBtn = document.getElementById('playBtn');
 const errEl = document.getElementById('err');
+const track = [];        // 歩いた軌跡（開始地点からの東西・南北の移動量 m）
 let watchId = null;
 let t0 = null;
 let lastPos = null;
@@ -322,6 +329,7 @@ function onPos(pos) {
   const sx = SERIES.x;
   const prevI = sx.v.length - 1;
   pushS('x', t, xE); pushS('y', t, yN); pushS('z', t, zU);
+  track.push({ x: xE, y: yN });   // トラック地図用（東=x右、北=y上）
 
   if (prevI >= 0) {
     const dt = t - sx.t[prevI];
@@ -401,6 +409,10 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('dist').innerHTML = '0 <small>m</small>';
   document.getElementById('spdMag').innerHTML = '-- <small>m/s</small>';
   document.getElementById('accMag').innerHTML = '-- <small>m/s²</small>';
+  track.length = 0;
+  document.getElementById('map-span').textContent = '';
+  const cvm = document.getElementById('cv-map');
+  cvm.getContext('2d').clearRect(0, 0, cvm.width, cvm.height);
 });
 
 // ---- 描画（phyphox方式：時間軸を圧縮して全履歴を表示） ----
@@ -408,6 +420,55 @@ function draw() {
   if (watchId === null) return;
   requestAnimationFrame(draw);
   KEYS.forEach(k => drawGraph(document.getElementById('cv-' + k), SERIES[k], marker[k]));
+  drawMap();
+}
+
+// ---- 移動のようす（自前トラック地図。経路全体が収まるよう自動ズーム・北が上） ----
+function drawMap() {
+  const cv = document.getElementById('cv-map');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height, PAD = 30;
+  ctx.clearRect(0, 0, W, H);
+  if (track.length < 1) {
+    ctx.fillStyle = '#666';
+    ctx.font = '16px sans-serif';
+    ctx.fillText('データ待ち…（GPSは数秒〜数十秒かかります）', 20, H / 2);
+    return;
+  }
+
+  // 経路全体が収まる表示範囲（最小10m四方。縦横比は保つ）
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const p of track) {
+    if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+  }
+  const spanX = Math.max(maxX - minX, 10), spanY = Math.max(maxY - minY, 10);
+  const scale = Math.min((W - PAD * 2) / spanX, (H - PAD * 2) / spanY);
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const toX = (x) => W / 2 + (x - cx) * scale;
+  const toY = (y) => H / 2 - (y - cy) * scale;   // 北=y+ を画面の上に
+
+  // 方位と表示はば
+  ctx.fillStyle = '#89a';
+  ctx.font = '14px sans-serif';
+  ctx.fillText('北↑', W - 40, 22);
+  document.getElementById('map-span').textContent = 'はば 約' + Math.round(W / scale) + 'm';
+
+  // 軌跡
+  ctx.strokeStyle = '#a8c26a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(toX(track[0].x), toY(track[0].y));
+  for (let i = 1; i < track.length; i++) ctx.lineTo(toX(track[i].x), toY(track[i].y));
+  ctx.stroke();
+
+  // スタート地点（緑の輪）と現在地（黄色の点）
+  ctx.strokeStyle = '#6f9';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(toX(track[0].x), toY(track[0].y), 6, 0, Math.PI * 2); ctx.stroke();
+  const last = track[track.length - 1];
+  ctx.fillStyle = '#ffe000';
+  ctx.beginPath(); ctx.arc(toX(last.x), toY(last.y), 6, 0, Math.PI * 2); ctx.fill();
 }
 
 function pickTimeStep(span) {

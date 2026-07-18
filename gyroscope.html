@@ -137,6 +137,7 @@ function createXYZLab(cfg) {
   let running = false;
   let started = false;
   let gotData = false;
+  let hasMarker = false;       // 線タップで値を読んだことをチュートリアルへ伝える
   let mode = 'xyz';           // 'xyz' | 'abs'（hasAbs=falseなら常にxyz）
   function activeKeys() { return mode === 'abs' ? ['abs'] : AXES; }
 
@@ -405,6 +406,7 @@ function createXYZLab(cfg) {
               const dist = Math.hypot(tapX - ptX, tapY - ptY);
               if (dist < 30) {
                 onLine = true;
+                hasMarker = true;
                 // uPlotのcursorを明示的にその点へ動かす → setCursor hook が発火して吹き出し表示
                 u.setCursor({ left: ptX, top: ptY });
               }
@@ -482,6 +484,7 @@ function createXYZLab(cfg) {
     setPlayIcon(false);
     t0 = null;
     tbuf.length = 0;
+    hasMarker = false;
     KEYS.forEach(key => {
       buf[key].length = 0;
       const valEl = document.getElementById('val-' + key);
@@ -520,8 +523,8 @@ function createXYZLab(cfg) {
   const api = {
     push,
     isRunning: () => running,
-    // 🔰ミッション用（既存互換）
-    hasMarker: () => false,
+    // 🔰チュートリアル用
+    hasMarker: () => hasMarker,
     isZoomed: () => document.body.classList.contains('zoom'),
     // タブ離脱などで計測を止め、センサーを手放す
     release: () => {

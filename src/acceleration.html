@@ -212,7 +212,7 @@ function makeAxisStep(api, dirs, startIdx) {
       let hit = null;
       if (Math.abs(v.x) > 3) hit = 'x'; else if (Math.abs(v.y) > 3) hit = 'y'; else if (Math.abs(v.z) > 2.5) hit = 'z';
       if (!hit) return false;
-      if (hit === guess) { api.note('正解！動いたのは ' + hit + ' でした🎉'); return true; }
+      if (hit === guess) { api.note('正解！動いたのは ' + hit + ' でした' + TUT_ICONS.check); return true; }
       di = (di + 1) % dirs.length; guess = null; api.markGuess(null);
       api.setQuestion(q());
       api.note('ちがったね（実測 ' + hit + '）。今度は「' + label() + '」で予想しよう');
@@ -242,11 +242,11 @@ function makePeakStep(api) {
 
 const TUT_DIRS = [{ label: '上へ', axis: 'y' }, { label: '右へ', axis: 'x' }, { label: '下へ', axis: 'y' }, { label: '左へ', axis: 'x' }];
 const STEPS = [
-  () => ({ html: () => '▶ を押して、計測を始めよう', tick: () => lab.isRunning() }),
+  () => ({ html: () => TUT_ICONS.play + ' を押して、計測を始めよう', tick: () => lab.isRunning() }),
   () => {                                             // 持ち方
     let since = null;
     return {
-      html: () => '画面を自分に向けて、縦に両手で持とう📱',
+      html: () => '画面を自分に向けて、縦に両手で持とう' + TUT_ICONS.phone,
       needsActive: true,
       tick(e) {
         if (!e) return false;
@@ -264,7 +264,7 @@ const STEPS = [
   (api) => makeAxisStep(api, TUT_DIRS, 0),
   (api) => makePeakStep(api),
   () => ({ html: () => 'グラフの線から はなれた場所をタップして、拡大してみよう', tick: () => lab.isZoomed() }),
-  () => ({ html: () => '⏸ を押して、グラフを止めよう', tick: () => !lab.isRunning() }),
+  () => ({ html: () => TUT_ICONS.pause + ' を押して、グラフを止めよう', tick: () => !lab.isRunning() }),
   () => ({ html: () => '線の上をタップして、その点の値を読もう', tick: () => lab.hasMarker() }),
   () => ({ html: () => 'グラフをもう一度タップして、元の大きさに戻そう', tick: () => !lab.isZoomed() }),
 ];
@@ -326,10 +326,10 @@ const tut = createTutorial({
   toggleBtnId: 'missionBtn',
   steps: STEPS,
   moreSteps: MORE,
-  completeText: '🎉 チュートリアル完了！グラフの読み方をマスターしたね',
+  completeText: TUT_ICONS.check + ' チュートリアル完了！グラフの読み方をマスターしたね',
   guessOptions: ['x', 'y', 'z'],
   isActive: () => lab.isRunning(),                    // 動き系ステップは計測中だけ判定
-  inactiveNote: '▶ を押して計測を始めてから動かそう',
+  inactiveNote: TUT_ICONS.play + ' を押して計測を始めてから動かそう',
 });
 
 // ▶ を押した直後にも判定（拡大/値読み/⏸ 用の 200ms ポールと合わせる）

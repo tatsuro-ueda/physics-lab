@@ -102,7 +102,7 @@
 <body>
 <header>
   <a class="back" href="index.html">←</a>
-  <div class="title">⏱️ 音響ストップウォッチ</div>
+  <div class="title"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="vertical-align:-4px"><path d="M15 1H9v2h6V1zm-2 13h-2V8h2v6zm6.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg> 音響ストップウォッチ</div>
   <button id="missionBtn" class="hbtn" title="チュートリアル"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="チュートリアル" style="display:block"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg></button>
 </header>
 
@@ -189,7 +189,7 @@ btn.addEventListener('click', async () => {
   clearAll();
   mode = 'armed';
   lastTrigger = audioCtx.currentTime;
-  stateEl.textContent = '🎤 最初の音を待っています…';
+  stateEl.innerHTML = TUT_ICONS.mic + ' 最初の音を待っています…';
   stateEl.className = 'waiting';
   btn.textContent = '中断';
   btn.classList.add('stop');
@@ -244,7 +244,7 @@ function loop() {
     lastTrigger = now;
     segmentStart = now;
     mode = 'running';
-    stateEl.textContent = '⏱️ 計測中… もう一度たたくと止まります';
+    stateEl.innerHTML = TUT_ICONS.timer + ' 計測中… もう一度たたくと止まります';
     stateEl.className = 'measuring';
     tut.event('started');
   } else if (triggered && mode === 'running') {
@@ -254,7 +254,7 @@ function loop() {
     laps.push(lap);
     mode = 'paused';
     timeEl.textContent = accum.toFixed(2);
-    stateEl.textContent = '⏸ 止まりました。もう一度たたくと続きから動きます';
+    stateEl.innerHTML = TUT_ICONS.pause + ' 止まりました。もう一度たたくと続きから動きます';
     stateEl.className = 'done';
     updateHistory();
     tut.event('paused', lap);
@@ -262,7 +262,7 @@ function loop() {
     lastTrigger = now;
     segmentStart = now;
     mode = 'running';
-    stateEl.textContent = '⏱️ 計測中… もう一度たたくと止まります';
+    stateEl.innerHTML = TUT_ICONS.timer + ' 計測中… もう一度たたくと止まります';
     stateEl.className = 'measuring';
     tut.event('resumed');
   }
@@ -322,7 +322,7 @@ const tut = createTutorial({
   toggleBtnId: 'missionBtn',
   steps: STEPS,
   moreSteps: MORE,
-  completeText: '🎉 チュートリアル完了！時間の測り方をマスターしたね',
+  completeText: TUT_ICONS.check + ' チュートリアル完了！時間の測り方をマスターしたね',
 });
 
 // スライダー操作をチュートリアルへ通知（環境調整ステップ用）

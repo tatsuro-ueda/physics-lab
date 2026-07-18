@@ -30,6 +30,7 @@
     background: none; border: none; color: #1a1a1a;
     font-size: 1.5rem; padding: 8px 12px; cursor: pointer;
   }
+  header button svg { display: block; }
   header a.dl { color: #1a1a1a; text-decoration: none; font-size: 1.3rem; padding: 8px 12px; }
   /* タブ（phyphox風） */
   .tabs {
@@ -104,8 +105,8 @@
 <header>
   <a class="back" href="index.html">←</a>
   <div class="title">位置（GPS）</div>
-  <button id="playBtn" title="計測開始">▶</button>
-  <button id="resetBtn" title="計測を止めてデータを消す">🗑</button>
+  <button id="playBtn" title="計測開始"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="計測開始"><path d="M8 5v14l11-7z"/></svg></button>
+  <button id="resetBtn" title="計測を止めてデータを消す"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="削除"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
 </header>
 
 <div class="tabs">
@@ -215,6 +216,9 @@ const marker = {};
 KEYS.forEach(k => marker[k] = null);
 
 const playBtn = document.getElementById('playBtn');
+// ヘッダーは絵文字ではなくラインSVGアイコン（他ページと同じ言語）
+const PLAY_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="計測開始"><path d="M8 5v14l11-7z"/></svg>';
+const PAUSE_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="一時停止"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
 const errEl = document.getElementById('err');
 const track = [];        // 歩いた軌跡（開始地点からの東西・南北の移動量 m）
 const vtrack = [];       // 速度ベクトルの軌跡（vx, vy）
@@ -290,7 +294,7 @@ playBtn.addEventListener('click', () => {
   if (watchId !== null) {           // 一時停止
     navigator.geolocation.clearWatch(watchId);
     watchId = null;
-    playBtn.textContent = '▶';
+    playBtn.innerHTML = PLAY_SVG;
     return;
   }
   if (!('geolocation' in navigator)) {
@@ -307,7 +311,7 @@ playBtn.addEventListener('click', () => {
   KEYS.forEach(k => { const t = SERIES[k].t; if (t.length) lastT = Math.max(lastT, t[t.length - 1]); });
   if (lastT) t0 = performance.now() / 1000 - lastT;
   KEYS.forEach(k => marker[k] = null);   // 再開時はタップ値の表示を消す
-  playBtn.textContent = '⏸';
+  playBtn.innerHTML = PAUSE_SVG;
   errEl.textContent = '';
   draw();
 });
@@ -402,7 +406,7 @@ function distMeters(lat1, lon1, lat2, lon2) {
 // ---- リセット：計測を止めてデータを消す ----
 document.getElementById('resetBtn').addEventListener('click', () => {
   if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-  playBtn.textContent = '▶';
+  playBtn.innerHTML = PLAY_SVG;
   t0 = null;
   lat0 = null; lon0 = null; alt0 = null; lastZ = 0;
   totalDist = 0; lastPos = null;

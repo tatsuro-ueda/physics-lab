@@ -40,10 +40,39 @@
   .m-done-btns button.m-more { background:#ffe000; color:#1a1a1a; border-color:#ffe000; }
   .tut-pulse { animation:m-pulse 1.1s ease-in-out 4; }
   @keyframes m-pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.35);} }
+  /* 完了バッジ：アイコンの右下隅に小さく重ねる（下に折り返して巨大表示されるのを防ぐ） */
+  .tut-done-badge { position:absolute; right:3px; bottom:4px; pointer-events:none; display:block; }
+  .tut-ico { vertical-align:-3px; }
   `;
+  // 完了バッジはヘッダーのSVGアイコン群と揃えたフラットなSVG（緑丸＋白チェック）
+  const DONE_BADGE_SVG =
+    '<svg class="tut-done-badge" viewBox="0 0 16 16" width="12" height="12" aria-label="完了">' +
+    '<circle cx="8" cy="8" r="8" fill="#2fae4a"/>' +
+    '<path d="M4.4 8.4l2.4 2.4 4.8-5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+
+  // チュートリアル文中で使う小さなフラットSVGアイコン（絵文字の代わり）。
+  // ページ側のステップ文・completeText からも window.TUT_ICONS で使える。
+  const ico = (path) =>
+    '<svg class="tut-ico" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">' + path + '</svg>';
+  window.TUT_ICONS = {
+    play: ico('<path d="M8 5v14l11-7z"/>'),
+    pause: ico('<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>'),
+    trash: ico('<path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>'),
+    cap: ico('<path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>'),
+    phone: ico('<path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14z"/>'),
+    repeat: ico('<path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>'),
+    mic: ico('<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>'),
+    timer: ico('<path d="M15 1H9v2h6V1zm-2 13h-2V8h2v6zm6.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>'),
+    check:
+      '<svg class="tut-ico" viewBox="0 0 16 16" width="16" height="16">' +
+      '<circle cx="8" cy="8" r="8" fill="#2fae4a"/>' +
+      '<path d="M4.4 8.4l2.4 2.4 4.8-5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>',
+  };
   const PANEL =
     '<div class="missions" hidden>' +
-    '<div class="m-head"><span class="m-title">🔰 チュートリアル</span><span class="m-dots"></span></div>' +
+    '<div class="m-head"><span class="m-title">' + window.TUT_ICONS.cap + ' チュートリアル</span><span class="m-dots"></span></div>' +
     '<div class="m-body"></div>' +
     '<div class="m-guess" hidden></div>' +
     '<button class="m-next" hidden>見えた！つぎへ</button>' +
@@ -94,7 +123,7 @@
 
     // ステップに渡す小さなAPI（DOMを直接触らせない）
     const api = {
-      note: (t) => { mNote.textContent = t; },
+      note: (t) => { mNote.innerHTML = t; },   // ステップ文と同様にSVGアイコンを混ぜられるようinnerHTML
       markGuess,
       setQuestion: (t) => { mBody.innerHTML = prefix() + t; },
       isActive: () => (cfg.isActive ? cfg.isActive() : true),
@@ -105,7 +134,7 @@
     let stepIndex = 0;
     try { stepIndex = Math.max(0, Math.min(cfg.steps.length, parseInt(localStorage.getItem(M_KEY) || '0', 10))); } catch (e) {}
     function save() { try { localStorage.setItem(M_KEY, String(stepIndex)); } catch (e) {} }
-    function prefix() { return mode === 'tutorial' ? '(' + (stepIndex + 1) + ') ' : '🔁 '; }
+    function prefix() { return mode === 'tutorial' ? '(' + (stepIndex + 1) + ') ' : window.TUT_ICONS.repeat + ' '; }
 
     function renderDots() {
       if (mode !== 'tutorial') { mDots.innerHTML = ''; return; }
@@ -120,10 +149,11 @@
 
     function showComplete() {
       current = null; renderDots();
-      mBody.innerHTML = cfg.completeText || '🎉 チュートリアル完了！';
+      mBody.innerHTML = cfg.completeText || (window.TUT_ICONS.check + ' チュートリアル完了！');
       mNote.textContent = ''; mGuess.hidden = true; mNext.hidden = true;
       mDoneBtns.hidden = false; mRestart.hidden = false; mClose.hidden = false; mMore.hidden = !hasMore;
-      toggleBtn.innerHTML = baseIcon + '<span style="font-size:0.7em">✅</span>';
+      toggleBtn.style.position = 'relative';
+      toggleBtn.innerHTML = baseIcon + DONE_BADGE_SVG;
     }
 
     function load() {

@@ -60,6 +60,30 @@
   .hint { text-align: center; color: #888; font-size: 0.8rem; margin: 12px 0; }
   .controls { text-align: center; margin: 8px 0; color: #aaa; font-size: 0.9rem; }
   #err { color: #f88; text-align: center; }
+  /* 🔰ミッション */
+  .missions {
+    margin: 0 0 10px;
+    background: #22261c;
+    border: 1px solid #4a5334;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+  }
+  .missions .m-title { color: #a8c26a; font-weight: bold; margin-bottom: 6px; }
+  .mission { padding: 5px 0; color: #ccc; }
+  .mission .m-check { margin-right: 4px; }
+  .mission.cleared { animation: m-flash 0.8s; }
+  @keyframes m-flash { 0% { background: #4a5334; } 100% { background: transparent; } }
+  .m-guess { margin-left: 6px; }
+  .m-guess button {
+    background: #333; color: #eee; border: 1px solid #555;
+    border-radius: 6px; padding: 4px 14px; margin: 0 3px; cursor: pointer; font-size: 0.9rem;
+  }
+  .m-guess button.picked { background: #ffe000; color: #1a1a1a; border-color: #ffe000; }
+  .m-note { color: #e8a56a; margin-left: 6px; }
+  .m-reset { text-align: right; }
+  .m-reset a { color: #789; font-size: 0.75rem; }
+  #missionBtn .m-done { font-size: 0.75rem; }
 </style>
 </head>
 <body>
@@ -69,12 +93,24 @@
   <button id="playBtn" title="計測開始">▶</button>
   <button id="resetBtn" title="計測を止めてデータを消す">🗑</button>
   <a class="dl" href="acceleration.html" download title="このページのHTMLファイルをダウンロード">⬇</a>
+  <button id="missionBtn" title="ミッション（グラフの読み方を体験で学ぶ）">🔰</button>
 </header>
 
 <main>
   <div class="controls">
     <label><input type="checkbox" id="gravity" checked> 重力をふくめる</label>
     　単位：m/s²　横軸：経過時間（秒）
+  </div>
+
+  <div class="missions" id="missionPanel">
+    <div class="m-title">🔰 ミッション（▶ で計測しながら挑戦しよう）</div>
+    <div class="mission" id="m0"><span class="m-check">⬜</span>0. 画面を自分に向けて、縦に両手で持とう📱</div>
+    <div class="mission" id="m1"><span class="m-check">⬜</span>1. 右へサッと動かすと、どのグラフが動く？
+      <span class="m-guess">予想：<button data-g="x">x</button><button data-g="y">y</button><button data-g="z">z</button></span>
+      <span class="m-note" id="m1note"></span>
+    </div>
+    <div class="mission" id="m2"><span class="m-check">⬜</span>2. yのグラフに「山→谷」を作ろう</div>
+    <div class="m-reset"><a href="#" id="missionReset">進捗をやり直す</a></div>
   </div>
 
   <div class="card" id="card-x">
@@ -123,12 +159,121 @@ const lab = createXYZLab({
     window.addEventListener('devicemotion', (e) => {
       const a = document.getElementById('gravity').checked
         ? e.accelerationIncludingGravity : e.acceleration;
-      if (!a || a.x === null) return;
-      lab.push(a.x * IOS_SIGN, a.y * IOS_SIGN, a.z * IOS_SIGN);
+      if (a && a.x !== null) {
+        lab.push(a.x * IOS_SIGN, a.y * IOS_SIGN, a.z * IOS_SIGN);
+      }
+      missionOnMotion(e);
     });
     return null;
   },
 });
+
+// ---- 🔰ミッション（このページ固有の学習コンテンツ） ----
+// 設計：予想→実験→検証の階段。判定は自動、進捗はlocalStorageに保存（🗑では消えない）。
+const M_KEY = 'phylab-acc-missions';
+let mState = { m0: false, m1: false, m2: false };
+try { mState = Object.assign(mState, JSON.parse(localStorage.getItem(M_KEY) || '{}')); } catch (e) {}
+let m1Guess = null;      // 予想した軸
+let m1GuessAt = 0;       // 予想タップ直後の揺れを無視するための時刻
+let m0Since = null;      // 正しい持ち方をキープし始めた時刻
+let m2PeakAt = null;     // yの「山」を検出した時刻
+
+const panel = document.getElementById('missionPanel');
+const missionBtn = document.getElementById('missionBtn');
+
+function mAllDone() { return mState.m0 && mState.m1 && mState.m2; }
+function mSave() { try { localStorage.setItem(M_KEY, JSON.stringify(mState)); } catch (e) {} }
+
+function mRender() {
+  for (const k of ['m0', 'm1', 'm2']) {
+    document.getElementById(k).querySelector('.m-check').textContent = mState[k] ? '✅' : '⬜';
+  }
+  missionBtn.innerHTML = mAllDone() ? '🔰<span class="m-done">✅</span>' : '🔰';
+}
+
+function mClear(k) {
+  if (mState[k]) return;
+  mState[k] = true;
+  mSave();
+  mRender();
+  const el = document.getElementById(k);
+  el.classList.remove('cleared');
+  void el.offsetWidth;             // アニメーションを再生し直すためのリフロー
+  el.classList.add('cleared');
+  if (mAllDone()) setTimeout(() => { panel.hidden = true; }, 1500);   // 全達成→少し見せてから畳む
+}
+
+missionBtn.addEventListener('click', () => { panel.hidden = !panel.hidden; });
+
+document.getElementById('missionReset').addEventListener('click', (ev) => {
+  ev.preventDefault();
+  mState = { m0: false, m1: false, m2: false };
+  m1Guess = null; m0Since = null; m2PeakAt = null;
+  document.querySelectorAll('.m-guess button').forEach(b => b.classList.remove('picked'));
+  document.querySelectorAll('.mission').forEach(el => el.classList.remove('cleared'));
+  document.getElementById('m1note').textContent = '';
+  mSave();
+  mRender();
+});
+
+document.querySelectorAll('.m-guess button').forEach(b => {
+  b.addEventListener('click', () => {
+    m1Guess = b.dataset.g;
+    m1GuessAt = performance.now();
+    document.querySelectorAll('.m-guess button').forEach(x => x.classList.toggle('picked', x === b));
+    document.getElementById('m1note').textContent = '予想OK。右へサッと動かそう！';
+  });
+});
+
+function missionOnMotion(e) {
+  if (mAllDone() || !lab.isRunning()) return;
+  const now = performance.now();
+
+  // ミッション0：縦に持つ → 重力(+9.8)がyに乗り、xとzはほぼ0（重力こみ値で判定）
+  const g = e.accelerationIncludingGravity;
+  if (!mState.m0 && g && g.y !== null) {
+    const gx = g.x * IOS_SIGN, gy = g.y * IOS_SIGN, gz = g.z * IOS_SIGN;
+    if (gy > 8.8 && gy < 10.8 && Math.abs(gx) < 1.5 && Math.abs(gz) < 1.5) {
+      if (m0Since === null) m0Since = now;
+      if (now - m0Since > 2000) mClear('m0');
+    } else {
+      m0Since = null;
+    }
+  }
+
+  // ミッション1・2は動きの加速度（重力なし値）で判定
+  const l = e.acceleration;
+  if (!l || l.x === null) return;
+  const lx = l.x * IOS_SIGN, ly = l.y * IOS_SIGN, lz = l.z * IOS_SIGN;
+
+  // ミッション1：予想した軸と、実際に最初に±3を超えた軸を照合（予想→実験→検証）
+  if (!mState.m1 && m1Guess && now - m1GuessAt > 500) {
+    let hit = null;
+    if (Math.abs(lx) > 3) hit = 'x';
+    else if (Math.abs(ly) > 3) hit = 'y';
+    else if (Math.abs(lz) > 3) hit = 'z';
+    if (hit) {
+      if (hit === m1Guess) {
+        document.getElementById('m1note').textContent = '正解！動いたのは ' + hit + ' でした';
+        mClear('m1');
+      } else {
+        document.getElementById('m1note').textContent = '実測は ' + hit + ' でした。もう一度予想してみよう';
+        m1Guess = null;
+        document.querySelectorAll('.m-guess button').forEach(b => b.classList.remove('picked'));
+      }
+    }
+  }
+
+  // ミッション2：yで山(+3超)→2秒以内に谷(−3未満)
+  if (!mState.m2) {
+    if (ly > 3) m2PeakAt = now;
+    else if (ly < -3 && m2PeakAt !== null && now - m2PeakAt < 2000) mClear('m2');
+  }
+}
+
+// 初期表示：全ミッション達成済みの人にはパネルを畳んでおく（🔰で再び開ける）
+mRender();
+panel.hidden = mAllDone();
 </script>
 </body>
 </html>

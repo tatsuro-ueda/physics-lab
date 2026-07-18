@@ -263,9 +263,9 @@ function micHint() {
   const ua = navigator.userAgent;
   const isIOS = /iPad|iPhone|iPod/.test(ua) ||
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if (isIOS) return '（「マイクの使用を求めています」と出たら「許可」を押してね）';
-  if (/Android/.test(ua)) return '（マイクを使ってもいい？と聞かれたら「許可」のついたボタンを押してね）';
-  return '（マイクを使ってもいい？と聞かれたら「許可」を押してね）';
+  if (isIOS) return '（「マイクの使用を求めています」と出たら「許可」して下さい）';
+  if (/Android/.test(ua)) return '（マイクを使ってもいい？と聞かれたら「許可」して下さい）';
+  return '（マイクを使ってもいい？と聞かれたら「許可」して下さい）';
 }
 
 const STEPS = [

@@ -446,6 +446,7 @@ function makeAxisStep(dirs, startIdx) {
   return {
     html: () => label() + 'サッと動かすと、どのグラフが動く？',
     guess: true,
+    needsMotion: true,   // 計測中（▶）のときだけ判定する
     onGuess(axis) { guess = axis; guessAt = performance.now(); mNote.textContent = '予想したね。' + label() + '動かそう！'; },
     tick(e) {
       if (!e || !guess || performance.now() - guessAt < 500) return false;
@@ -472,6 +473,7 @@ function makePeakStep() {
   let firstAt = null;
   return {
     html: () => ax + ' のグラフに「' + (up ? '山→谷' : '谷→山') + '」を作ろう',
+    needsMotion: true,
     tick(e) {
       if (!e) return false;
       const l = e.acceleration; if (!l || l.x === null) return false;
@@ -497,6 +499,7 @@ const STEP_DEFS = [
     let since = null;
     return {
       html: () => '画面を自分に向けて、縦に両手で持とう📱',
+      needsMotion: true,
       tick(e) {
         if (!e) return false;
         const g = e.accelerationIncludingGravity;
@@ -533,6 +536,7 @@ const MORE_DEFS = [
     let last = 0, count = 0, startAt = null;
     return {
       html: () => ax + ' のグラフに「ギザギザ」を作ろう（山と谷をくりかえす）',
+      needsMotion: true,
       tick(e) {
         if (!e) return false;
         const l = e.acceleration; if (!l || l.x === null) return false;
@@ -548,6 +552,7 @@ const MORE_DEFS = [
     let since = null;
     return {
       html: () => ax + ' の向きに、グーッと加速し続けよう（同じ向きにだんだん速く）',
+      needsMotion: true,
       tick(e) {
         if (!e) return false;
         const l = e.acceleration; if (!l || l.x === null) return false;
@@ -561,6 +566,7 @@ const MORE_DEFS = [
     let phase = 0, stopAt = null;
     return {
       html: () => ax + ' の向きに急に動かして、ピタッと止めよう',
+      needsMotion: true,
       tick(e) {
         if (!e) return false;
         const l = e.acceleration; if (!l || l.x === null) return false;
@@ -614,9 +620,14 @@ function loadStep() {
     if (stepIndex >= STEP_DEFS.length) { showComplete(); return; }
     current = STEP_DEFS[stepIndex]();
     missionBtn.innerHTML = '🔰';
-  } else {                                            // more：応用問題をランダムに
+  } else {                                            // more：まず計測ゲート、その後ランダム応用問題
     mDots.innerHTML = '';
-    current = rand(MORE_DEFS)();
+    if (!lab.isRunning()) {
+      // 計測が止まっていたら、まず ▶ を押させる（グラフが動かないまま進めない）
+      current = { html: () => '▶ を押して、計測を始めよう', tick() { return lab.isRunning(); } };
+    } else {
+      current = rand(MORE_DEFS)();
+    }
     mDoneBtns.hidden = false; mCloseBtn.hidden = false; mMoreBtn.hidden = true;   // more中は[閉じる]のみ
   }
   mBody.innerHTML = mBodyLabel() + current.html();
@@ -631,7 +642,13 @@ function clearStep() {
 }
 
 function missionTick(e) {
-  if (current && current.tick(e)) clearStep();
+  if (!current) return;
+  // 動き系の課題は、計測中（▶）のときだけ判定する。一時停止（⏸）中は反応しない。
+  if (current.needsMotion && !lab.isRunning()) {
+    mNote.textContent = '▶ を押して計測を始めてから動かそう';
+    return;
+  }
+  if (current.tick(e)) clearStep();
 }
 
 // devicemotion（センサー付き）に加え、200ms定期でも回す（⏸中の拡大・数値読み判定のため）

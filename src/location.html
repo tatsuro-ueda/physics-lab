@@ -99,7 +99,11 @@
   body.zoom .card.zoomed { display: block; }
   body.zoom .card.zoomed canvas { height: 60vh; }
   body.zoom .card.zoomed .head { font-size: 1.1rem; }
+  .status-note { text-align: center; color: #bbb; font-size: 0.9rem; margin: 8px 0 12px; }
   .hint { text-align: center; color: #888; font-size: 0.8rem; margin: 12px 0; }
+  .hint .hint-zoom { display: none; }
+  body.zoom .hint .hint-plain { display: none; }
+  body.zoom .hint .hint-zoom { display: inline; }
   #err { color: #f88; text-align: center; }
 </style>
 </head>
@@ -120,6 +124,7 @@
 
 <main>
   <div id="tutorialMount"></div>
+  <p id="status" class="status-note">▶を押すと位置の記録を始めます</p>
   <!-- 位置タブの数値カード -->
   <div class="values visible" id="values-pos">
     <div class="vcard"><div class="label">緯度</div><div class="num" id="lat">--</div></div>
@@ -197,7 +202,8 @@
   <p id="err"></p>
   <p class="hint" id="hint">
     変位＝開始地点からの移動<br>
-    <b>線をタップ</b>＝値、<b>まわりをタップ</b>＝拡大（屋外・散歩だと変化が見える）
+    <span class="hint-plain"><b>グラフをタップ</b>＝拡大</span>
+    <span class="hint-zoom"><b>線をタップ</b>＝値、<b>まわりをタップ</b>＝縮小</span>
   </p>
 </main>
 
@@ -228,6 +234,7 @@ const playBtn = document.getElementById('playBtn');
 const PLAY_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="計測開始"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="一時停止"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
 const errEl = document.getElementById('err');
+const statusEl = document.getElementById('status');
 const track = [];        // 歩いた軌跡（開始地点からの東西・南北の移動量 m）
 let watchId = null;
 let t0 = null;
@@ -238,6 +245,45 @@ let lastZ = 0;   // 高度が取れない端末では0のまま
 
 function isRunning() {
   return watchId !== null;
+}
+
+function setStatus(text) {
+  statusEl.textContent = text;
+}
+
+function stopWatching(reason) {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  playBtn.innerHTML = PLAY_SVG;
+  if (reason === 'paused') setStatus('一時停止中。▶で再開できます');
+  if (reason === 'hidden') setStatus('このタブを離れたので停止しました。▶で再開できます');
+  if (reason === 'reset') setStatus('▶を押すと位置の記録を始めます');
+  if (reason === 'error') setStatus('記録は停止しました。原因を確認してから、▶でやり直せます');
+}
+
+function startWatching() {
+  if (!('geolocation' in navigator)) {
+    errEl.textContent = 'この端末・ブラウザでは位置情報が使えません。別の端末かブラウザを試してね';
+    setStatus('位置情報を使えないため、記録を始められません');
+    return;
+  }
+  watchId = navigator.geolocation.watchPosition(onPos, onErr, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 15000,
+  });
+  // 再開時：ポーズしていた時間を除いて時間軸を連続させる
+  let lastT = 0;
+  KEYS.forEach(k => { const t = SERIES[k].t; if (t.length) lastT = Math.max(lastT, t[t.length - 1]); });
+  if (lastT) t0 = performance.now() / 1000 - lastT;
+  KEYS.forEach(k => marker[k] = null);   // 再開時はタップ値の表示を消す
+  playBtn.innerHTML = PAUSE_SVG;
+  errEl.textContent = '';
+  setStatus('記録中。少し歩いて、線や地図の変化を見よう');
+  tut.event('started');
+  draw();
 }
 
 const tut = createTutorial({
@@ -336,30 +382,11 @@ KEYS.forEach(key => {
 
 // ---- 計測 ----
 playBtn.addEventListener('click', () => {
-  if (watchId !== null) {           // 一時停止
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-    playBtn.innerHTML = PLAY_SVG;
+  if (isRunning()) {
+    stopWatching('paused');
     return;
   }
-  if (!('geolocation' in navigator)) {
-    errEl.textContent = 'この端末・ブラウザでは位置情報が使えません';
-    return;
-  }
-  watchId = navigator.geolocation.watchPosition(onPos, onErr, {
-    enableHighAccuracy: true,
-    maximumAge: 0,
-    timeout: 15000
-  });
-  // 再開時：ポーズしていた時間を除いて時間軸を連続させる
-  let lastT = 0;
-  KEYS.forEach(k => { const t = SERIES[k].t; if (t.length) lastT = Math.max(lastT, t[t.length - 1]); });
-  if (lastT) t0 = performance.now() / 1000 - lastT;
-  KEYS.forEach(k => marker[k] = null);   // 再開時はタップ値の表示を消す
-  tut.event('started');
-  playBtn.innerHTML = PAUSE_SVG;
-  errEl.textContent = '';
-  draw();
+  startWatching();
 });
 
 function onPos(pos) {
@@ -441,8 +468,13 @@ function pushS(key, t, v) {
 }
 
 function onErr(e) {
-  const msg = { 1: '位置情報の使用が許可されませんでした', 2: '位置を取得できませんでした', 3: '取得がタイムアウトしました' };
-  errEl.textContent = msg[e.code] || e.message;
+  stopWatching('error');
+  const msg = {
+    1: '位置情報の使用が許可されませんでした。ブラウザの設定で許可してから、もう一度▶を押してね',
+    2: '位置を取得できませんでした。屋外へ移動するか、少し待ってからもう一度▶を押してね',
+    3: '位置の取得がタイムアウトしました。空が開けた場所で、もう一度▶を押してね',
+  };
+  errEl.textContent = msg[e.code] || '位置の取得で問題が起きました。少し待ってから、もう一度▶を押してね';
 }
 
 function distMeters(lat1, lon1, lat2, lon2) {
@@ -453,10 +485,13 @@ function distMeters(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && isRunning()) stopWatching('hidden');
+});
+
 // ---- リセット：計測を止めてデータを消す ----
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-  playBtn.innerHTML = PLAY_SVG;
+  stopWatching('reset');
   t0 = null;
   lat0 = null; lon0 = null; alt0 = null; lastZ = 0;
   totalDist = 0; lastPos = null;
@@ -474,6 +509,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('dist').innerHTML = '0 <small>m</small>';
   document.getElementById('spdMag').innerHTML = '-- <small>m/s</small>';
   document.getElementById('accMag').innerHTML = '-- <small>m/s²</small>';
+  errEl.textContent = '';
   track.length = 0;
   [['cv-map', 'map-span'], ['cv-vmap', 'vmap-span'], ['cv-amap', 'amap-span']].forEach(([cvId, spanId]) => {
     document.getElementById(spanId).textContent = '';

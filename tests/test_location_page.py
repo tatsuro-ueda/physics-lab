@@ -45,6 +45,18 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertNotIn("pts.map((p) => p[opts.metricKey]).filter((v) => Number.isFinite(v))", source)
         self.assertNotIn("Math.max(...metricValues)", source)
 
+    def test_location_page_has_actionable_status_and_error_copy(self):
+        source = LOCATION_SOURCE.read_text(encoding="utf-8")
+
+        self.assertIn('id="status"', source)
+        self.assertIn("document.addEventListener('visibilitychange'", source)
+        self.assertIn("stopWatching('hidden')", source)
+        self.assertIn("このタブを離れたので停止しました。▶で再開できます", source)
+        self.assertIn("位置情報の使用が許可されませんでした。ブラウザの設定で許可してから、もう一度▶を押してね", source)
+        self.assertIn("位置の取得がタイムアウトしました。空が開けた場所で、もう一度▶を押してね", source)
+        self.assertIn('<span class="hint-plain">', source)
+        self.assertIn('<span class="hint-zoom">', source)
+
     def test_generated_location_page_has_learning_hooks(self):
         generated = LOCATION_BUILD.read_text(encoding="utf-8")
 

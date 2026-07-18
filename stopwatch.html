@@ -25,6 +25,22 @@
   header .title { font-size: 1.1rem; font-weight: bold; flex: 1; }
   header a.dl { color: #1a1a1a; text-decoration: none; font-size: 1.3rem; padding: 8px 12px; }
   header button.hbtn { background: none; border: none; color: #1a1a1a; font-size: 1.5rem; padding: 8px 12px; cursor: pointer; }
+  /* 🔰チュートリアル */
+  .missions { max-width: 480px; margin: 0 auto 14px; background:#22261c; border:1px solid #4a5334; border-radius:6px; padding:10px 14px; font-size:0.95rem; text-align:left; }
+  .m-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .m-head .m-title { color:#a8c26a; font-weight:bold; }
+  .m-dots { letter-spacing:3px; font-size:0.9rem; color:#4a5334; }
+  .m-dots .on { color:#ffe000; } .m-dots .now { color:#a8c26a; } .m-dots .m-remain { color:#a8c26a; font-size:0.8rem; }
+  .m-body { color:#eee; padding:4px 0; min-height:1.5rem; }
+  .m-body.cleared { animation:m-flash 0.9s; }
+  @keyframes m-flash { 0%{background:#4a5334;} 100%{background:transparent;} }
+  .m-note { color:#e8a56a; margin-top:6px; font-size:0.85rem; min-height:1rem; }
+  .m-next { background:#ffe000; color:#1a1a1a; border:none; border-radius:6px; padding:6px 18px; margin-top:8px; cursor:pointer; font-size:0.95rem; }
+  .m-done-btns { text-align:right; margin-top:8px; }
+  .m-done-btns button { background:#333; color:#eee; border:1px solid #555; border-radius:6px; padding:6px 18px; margin-left:8px; cursor:pointer; font-size:0.95rem; }
+  .m-done-btns button#mMoreBtn { background:#ffe000; color:#1a1a1a; border-color:#ffe000; }
+  #missionBtn.pulse { animation:m-pulse 1.1s ease-in-out 4; }
+  @keyframes m-pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.35);} }
   h1 { font-size: 1.3rem; margin: 8px 0 16px; }
   #time {
     font-size: 4rem;
@@ -93,6 +109,18 @@
   <a class="dl" href="stopwatch.html" download title="このページのHTMLファイルをダウンロード">⬇</a>
   <button id="missionBtn" class="hbtn" title="チュートリアル">🔰</button>
 </header>
+
+<div class="missions" id="missionPanel" hidden>
+  <div class="m-head"><span class="m-title">🔰 チュートリアル</span><span class="m-dots" id="mDots"></span></div>
+  <div class="m-body" id="mBody"></div>
+  <div class="m-note" id="mNote"></div>
+  <button id="mNextBtn" class="m-next" hidden>見えた！つぎへ</button>
+  <div class="m-done-btns" id="mDoneBtns" hidden>
+    <button id="mRestartBtn">最初から</button>
+    <button id="mMoreBtn">もっとやる</button>
+    <button id="mCloseBtn">閉じる</button>
+  </div>
+</div>
 
 <div id="time">0.00</div>
 <div id="state">「開始」を押すと、音を待ちます</div>
@@ -186,6 +214,7 @@ btn.addEventListener('click', async () => {
   btn.textContent = '中断';
   btn.classList.add('stop');
   errEl.textContent = '';
+  notifyTutorial('armed');
 });
 
 resetBtn.addEventListener('click', () => {
@@ -226,6 +255,7 @@ function loop() {
     mode = 'measuring';
     stateEl.textContent = '⏱️ 計測中… 次の音で止まります';
     stateEl.className = 'measuring';
+    notifyTutorial('measuring');
   } else if (triggered && mode === 'measuring') {
     lastTrigger = now;
     const elapsed = now - startTime;
@@ -238,12 +268,138 @@ function loop() {
     results.push(elapsed);
     historyEl.innerHTML = '記録：' +
       results.map(r => r.toFixed(2) + ' 秒').join('、 ');
+    notifyTutorial('done', elapsed);
   }
 
   if (mode === 'measuring') {
     timeEl.textContent = (now - startTime).toFixed(2);
   }
 }
+
+// ================= 🔰チュートリアル（イベント駆動） =================
+// 計測の3遷移（armed / measuring / done）を notifyTutorial で受け取って進む。
+// 進捗は localStorage（reset では消えない）。判定は計測結果で自動。
+const M_KEY = 'phylab-sw-step';
+const SEEN_KEY = 'phylab-sw-seen';
+const panel = document.getElementById('missionPanel');
+const missionBtn = document.getElementById('missionBtn');
+const mBody = document.getElementById('mBody');
+const mDots = document.getElementById('mDots');
+const mNote = document.getElementById('mNote');
+const mNextBtn = document.getElementById('mNextBtn');
+const mDoneBtns = document.getElementById('mDoneBtns');
+const mRestartBtn = document.getElementById('mRestartBtn');
+const mMoreBtn = document.getElementById('mMoreBtn');
+const mCloseBtn = document.getElementById('mCloseBtn');
+
+// 範囲当て課題（lo〜hi秒で止める）。幅は必ず1秒以上のプールから選ぶ。
+function rangeStep(lo, hi) {
+  return {
+    html: lo + '〜' + hi + '秒の間で止めてみよう',
+    on: 'done',
+    check: (el) => el >= lo && el <= hi,
+    fail: (el) => (el < lo ? 'もう少し長く' : 'もう少し短く'),
+  };
+}
+const RANGE_POOL = [[5,8],[3,5],[6,8],[2,4],[4,6],[7,9],[1,3],[8,10]];
+
+// チュートリアル本編（順序固定）
+const STEP_DEFS = [
+  { html: '「開始」を押して、音を待とう', on: 'armed' },
+  { html: '手をパンとたたいて、タイマーをスタート', on: 'measuring' },
+  { html: 'タイマーが動いているのを見てみよう', observe: true },
+  { html: 'もう一度たたいて、タイマーを止めよう', on: 'done' },
+  { html: 'タイマーが止まったのを見てみよう', observe: true },
+  rangeStep(5, 8),
+];
+
+let mode2 = 'tutorial';   // 'tutorial' | 'more'（stopwatchの計測modeとは別物）
+let current = null;
+let stepIndex = 0;
+try { stepIndex = Math.max(0, Math.min(STEP_DEFS.length, parseInt(localStorage.getItem(M_KEY) || '0', 10))); } catch (e) {}
+
+function saveStep() { try { localStorage.setItem(M_KEY, String(stepIndex)); } catch (e) {} }
+const rnd = (a) => a[Math.floor(Math.random() * a.length)];
+
+function renderDots() {
+  if (mode2 !== 'tutorial') { mDots.innerHTML = ''; return; }
+  let s = '';
+  for (let i = 0; i < STEP_DEFS.length; i++) {
+    const cls = i < stepIndex ? 'on' : (i === stepIndex ? 'now' : '');
+    s += '<span class="' + cls + '">●</span>';
+  }
+  const remain = STEP_DEFS.length - stepIndex;
+  mDots.innerHTML = s + (remain > 0 ? ' <span class="m-remain">あと' + remain + 'つ</span>' : '');
+}
+
+function showComplete() {
+  current = null;
+  renderDots();
+  mBody.innerHTML = '🎉 チュートリアル完了！時間の測り方をマスターしたね';
+  mNote.textContent = '';
+  mNextBtn.hidden = true;
+  mDoneBtns.hidden = false; mRestartBtn.hidden = false; mMoreBtn.hidden = false; mCloseBtn.hidden = false;
+  missionBtn.innerHTML = '🔰✅';
+}
+
+function loadStep() {
+  mNote.textContent = '';
+  mNextBtn.hidden = true;
+  mDoneBtns.hidden = true;
+  if (mode2 === 'tutorial') {
+    renderDots();
+    if (stepIndex >= STEP_DEFS.length) { showComplete(); return; }
+    current = STEP_DEFS[stepIndex];
+    mBody.innerHTML = (stepIndex + 1) + '. ' + current.html;
+    mNextBtn.hidden = !current.observe;   // 観察ステップだけ「見えた！つぎへ」
+    missionBtn.innerHTML = '🔰';
+  } else {                                // もっとやる：範囲当てをランダムに
+    mDots.innerHTML = '';
+    const r = rnd(RANGE_POOL);
+    current = rangeStep(r[0], r[1]);
+    mBody.innerHTML = '🔁 ' + current.html;
+    mDoneBtns.hidden = false; mRestartBtn.hidden = false; mCloseBtn.hidden = false; mMoreBtn.hidden = true;
+  }
+}
+
+function clearStep() {
+  mBody.classList.remove('cleared'); void mBody.offsetWidth; mBody.classList.add('cleared');
+  current = null;
+  if (mode2 === 'tutorial') { stepIndex++; saveStep(); }
+  setTimeout(loadStep, 900);
+}
+
+// 計測ロジックから呼ばれる：event = 'armed' | 'measuring' | 'done'
+function notifyTutorial(event, data) {
+  if (!current || current.observe) return;      // 観察ステップはボタン待ち
+  if (current.on !== event) return;
+  if (current.check && !current.check(data)) {   // 範囲外 → 方向ヒントで再挑戦
+    mNote.textContent = data.toFixed(2) + '秒。' + current.fail(data);
+    return;
+  }
+  if (current.check) mNote.textContent = 'ぴったり！✅';
+  clearStep();
+}
+
+// 「見えた！つぎへ」＝観察ステップを進める
+mNextBtn.addEventListener('click', () => { if (current && current.observe) clearStep(); });
+
+// 🔰トグル
+missionBtn.addEventListener('click', () => {
+  missionBtn.classList.remove('pulse');
+  panel.hidden = !panel.hidden;
+  try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
+});
+
+// [最初から]／[もっとやる]／[閉じる]
+mRestartBtn.addEventListener('click', () => { mode2 = 'tutorial'; stepIndex = 0; saveStep(); loadStep(); });
+mMoreBtn.addEventListener('click', () => { mode2 = 'more'; loadStep(); });
+mCloseBtn.addEventListener('click', () => { panel.hidden = true; });
+
+// 初期化：パネルは畳んだまま。初回だけ🔰点滅で気づかせる。
+loadStep();
+let seen = false; try { seen = !!localStorage.getItem(SEEN_KEY); } catch (e) {}
+if (!seen) missionBtn.classList.add('pulse');
 </script>
 </body>
 </html>

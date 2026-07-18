@@ -78,6 +78,9 @@
 
     const M_KEY = cfg.keyPrefix + '-step';
     const SEEN_KEY = cfg.keyPrefix + '-seen';
+    // ボタンの中身（絵文字でもSVGアイコンでも）を保存して、完了時は✅を添えるだけにする。
+    // innerHTML を '🔰' 固定で上書きすると、ページ側がSVGアイコンにしたとき壊れるため。
+    const baseIcon = toggleBtn.innerHTML;
     const hasMore = cfg.moreSteps && cfg.moreSteps.length > 0;
     const rand = (a) => a[Math.floor(Math.random() * a.length)];
 
@@ -120,7 +123,7 @@
       mBody.innerHTML = cfg.completeText || '🎉 チュートリアル完了！';
       mNote.textContent = ''; mGuess.hidden = true; mNext.hidden = true;
       mDoneBtns.hidden = false; mRestart.hidden = false; mClose.hidden = false; mMore.hidden = !hasMore;
-      toggleBtn.innerHTML = '🔰✅';
+      toggleBtn.innerHTML = baseIcon + '<span style="font-size:0.7em">✅</span>';
     }
 
     function load() {
@@ -130,7 +133,7 @@
         renderDots();
         if (stepIndex >= cfg.steps.length) { showComplete(); return; }
         current = cfg.steps[stepIndex](api);
-        toggleBtn.innerHTML = '🔰';
+        toggleBtn.innerHTML = baseIcon;
       } else {
         mDots.innerHTML = '';
         current = rand(cfg.moreSteps)(api);

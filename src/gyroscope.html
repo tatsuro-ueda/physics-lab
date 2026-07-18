@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ジャイロスコープ | タブレット物理実験ラボ</title>
 <style>
-  :root { --phx-orange: #ffe000; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
+  :root { --phx-orange: #ffe000; --ax-x: #4C8DF0; --ax-y: #4FC96B; --ax-z: #F2C744; }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -33,22 +33,31 @@
     background: none; border: none; color: #1a1a1a;
     font-size: 1.5rem; padding: 8px 12px; cursor: pointer;
   }
+  header button svg { display: block; }
   header a.dl { color: #1a1a1a; text-decoration: none; font-size: 1.3rem; padding: 8px 12px; }
   main { max-width: 760px; margin: 0 auto; padding: 8px; }
   .card {
-    margin-bottom: 10px;
-    border: 1px solid #333;
-    border-radius: 4px;
+    position: relative;
+    margin-bottom: 12px;
+    border: 1px solid #3a3a3a;
+    border-radius: 14px;
+    background: #181818;
     overflow: hidden;
     cursor: pointer;
+    padding: 5px;
   }
+  /* タイトルはグラフ左上の空き帯（uPlotのpadding上部）に重ねて、縦の無駄をなくす */
   .card .head {
-    background: #2b2b2b;
-    text-align: center;
-    font-size: 0.9rem;
+    position: absolute;
+    top: 11px;
+    left: 16px;
+    right: 16px;
+    z-index: 2;
+    pointer-events: none;
+    background: none;
+    font-size: 1rem;
     display: flex;
     justify-content: space-between;
-    padding: 5px 10px;
   }
   .card .val { font-variant-numeric: tabular-nums; color: #bbb; }
   /* グラフのマウント枠と拡大時サイズは lab-common.js が動的注入する .uplot-mount に任せる。 */
@@ -65,7 +74,7 @@
   <a class="back" href="index.html">←</a>
   <div class="title">ジャイロスコープ（回転の速さ）</div>
   <button id="playBtn" title="計測開始">▶</button>
-  <button id="resetBtn" title="計測を止めてデータを消す">🗑</button>
+  <button id="resetBtn" title="計測を止めてデータを消す"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="削除"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
 </header>
 
 <main>

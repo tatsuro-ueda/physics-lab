@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>磁気センサー（3軸） | タブレット物理実験ラボ</title>
 <style>
-  :root { --phx-orange: #ffe000; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
+  :root { --phx-orange: #ffe000; --ax-x: #4C8DF0; --ax-y: #4FC96B; --ax-z: #F2C744; }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -33,22 +33,31 @@
     background: none; border: none; color: #1a1a1a;
     font-size: 1.5rem; padding: 8px 12px; cursor: pointer;
   }
+  header button svg { display: block; }
   header a.dl { color: #1a1a1a; text-decoration: none; font-size: 1.3rem; padding: 8px 12px; }
   main { max-width: 760px; margin: 0 auto; padding: 8px; }
   .card {
-    margin-bottom: 10px;
-    border: 1px solid #333;
-    border-radius: 4px;
+    position: relative;
+    margin-bottom: 12px;
+    border: 1px solid #3a3a3a;
+    border-radius: 14px;
+    background: #181818;
     overflow: hidden;
     cursor: pointer;
+    padding: 5px;
   }
+  /* タイトルはグラフ左上の空き帯（uPlotのpadding上部）に重ねて、縦の無駄をなくす */
   .card .head {
-    background: #2b2b2b;
-    text-align: center;
-    font-size: 0.9rem;
+    position: absolute;
+    top: 11px;
+    left: 16px;
+    right: 16px;
+    z-index: 2;
+    pointer-events: none;
+    background: none;
+    font-size: 1rem;
     display: flex;
     justify-content: space-between;
-    padding: 5px 10px;
   }
   .card .val { font-variant-numeric: tabular-nums; color: #bbb; }
   /* グラフのマウント枠と拡大時サイズは lab-common.js が動的注入する .uplot-mount に任せる。 */
@@ -66,7 +75,7 @@
   <a class="back" href="index.html">←</a>
   <div class="title">磁気センサー（3軸）</div>
   <button id="playBtn" title="計測開始">▶</button>
-  <button id="resetBtn" title="計測を止めてデータを消す">🗑</button>
+  <button id="resetBtn" title="計測を止めてデータを消す"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="削除"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
 </header>
 
 <main>
@@ -116,7 +125,7 @@ function createXYZLab(cfg) {
   // cfg.onReset   : （任意）🗑時のページ固有の後始末
 
   const AXES = ['x', 'y', 'z'];
-  const COLORS = { x: '#ff9500', y: '#d4c400', z: '#e04040', abs: '#eeeeee' };
+  const COLORS = { x: '#4C8DF0', y: '#4FC96B', z: '#F2C744', abs: '#eeeeee' };
   const MAX_SAMPLES = 150000;
 
   // ページに card-abs があれば |a| モードを扱う。無ければxyzのみ（gyroscope/magnetometerは従来通り）。
@@ -168,7 +177,7 @@ function createXYZLab(cfg) {
       '.u-select{background:rgba(255,224,0,0.15);position:absolute;pointer-events:none}' +
       '.u-axis.u-off,.u-select.u-off,.u-cursor-x.u-off,.u-cursor-y.u-off,.u-cursor-pt.u-off{display:none}' +
       // タブレット物理実験ラボ 側の追加：uPlot マウント枠と、拡大時のサイズ
-      '.uplot-mount{width:100%;height:150px;background:#000;position:relative;touch-action:none}' +
+      '.uplot-mount{width:100%;height:180px;background:#000;position:relative;touch-action:none}' +
       'body.zoom .card.zoomed .uplot-mount{height:60vh}' +
       // タップした点の値をグラフ内に浮かべる吹き出し（phyphox風）。u.over（描画エリア）にDOMで載せる。
       '.lab-tip{position:absolute;pointer-events:none;background:rgba(0,0,0,0.85);color:#fff;' +
@@ -193,8 +202,11 @@ function createXYZLab(cfg) {
 
     const opts = {
       width: mount.clientWidth || 720,
-      height: mount.clientHeight || 150,
+      height: mount.clientHeight || 180,
       pxAlign: false,
+      // 上端はタイトルをグラフ内に重ねる領域（カード側 .head が absolute で載る）。
+      // 最上段の目盛りラベルがタイトルに隠れない高さを確保する。
+      padding: [32, 8, 0, 0],
       scales: {
         // x軸は自動追従・ピンチで制御するので auto:false + viewT 直参照
         x: { time: false, auto: false, range: () => [viewT.min, viewT.max] },
@@ -203,13 +215,13 @@ function createXYZLab(cfg) {
       },
       axes: [
         {
-          stroke: '#888', ticks: { stroke: '#333', size: 4 }, grid: { stroke: '#2a2a2a' },
-          font: '12px sans-serif',
+          stroke: '#aaa', ticks: { stroke: '#444', size: 4 }, grid: { stroke: '#3a3a3a' },
+          font: '13px sans-serif',
           values: (u, ticks) => ticks.map(v => v.toFixed(v < 1 ? 1 : 0) + 's'),
         },
         {
-          stroke: '#888', ticks: { stroke: '#333', size: 4 }, grid: { stroke: '#2a2a2a' },
-          font: '12px sans-serif', size: 46,
+          stroke: '#aaa', ticks: { stroke: '#444', size: 4 }, grid: { stroke: '#3a3a3a' },
+          font: '13px sans-serif', size: 46,
         },
       ],
       series: [
@@ -441,10 +453,16 @@ function createXYZLab(cfg) {
   }
 
   // ---- ▶⏸：計測の開始・一時停止 ----
+  // ヘッダーは絵文字ではなくラインSVGアイコン（index.htmlのリデザインと同じ言語）。
+  // currentColor で描くので、ボタンの color がそのままアイコン色になる。
+  const PLAY_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="計測開始"><path d="M8 5v14l11-7z"/></svg>';
+  const PAUSE_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="一時停止"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+  function setPlayIcon(playing) { playBtn.innerHTML = playing ? PAUSE_SVG : PLAY_SVG; }
+  setPlayIcon(false);
   playBtn.addEventListener('click', async () => {
     if (running) {
       running = false;
-      playBtn.textContent = '▶';
+      setPlayIcon(false);
       return;
     }
     if (!started) {
@@ -456,13 +474,13 @@ function createXYZLab(cfg) {
     if (tbuf.length) t0 = performance.now() / 1000 - tbuf[tbuf.length - 1];
     running = true;
     errEl.textContent = '';
-    playBtn.textContent = '⏸';
+    setPlayIcon(true);
   });
 
   // ---- 🗑：計測を止めてデータを消す（phyphoxのデータ削除と同じ） ----
   document.getElementById('resetBtn').addEventListener('click', () => {
     running = false;
-    playBtn.textContent = '▶';
+    setPlayIcon(false);
     t0 = null;
     tbuf.length = 0;
     KEYS.forEach(key => {
@@ -495,7 +513,7 @@ function createXYZLab(cfg) {
     });
     if (tbuf.length > MAX_SAMPLES) {
       running = false;
-      playBtn.textContent = '▶';
+      setPlayIcon(false);
       errEl.textContent = '記録が長くなったので自動停止しました（🗑 で消去できます）';
     }
   }
@@ -510,7 +528,7 @@ function createXYZLab(cfg) {
     release: () => {
       running = false;
       started = false;
-      playBtn.textContent = '▶';
+      setPlayIcon(false);
       if (cfg.stop) cfg.stop();
     },
     // 表示モード切替（'xyz' | 'abs'）。ページ側のUIから呼ぶ。

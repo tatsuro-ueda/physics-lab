@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>音響ストップウォッチ | タブレット物理実験ラボ</title>
+<link rel="stylesheet" href="driver.css">
 <style>
   body {
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -54,11 +55,20 @@
   }
   button.hbtn { padding: 8px 12px; }   /* ヘッダーの🔰は小さく */
   button.stop { background: #d9534f; }
+  /* 調整エリアは枠付きカードにして、行間をゆったり取る（モック準拠） */
   #level-wrap {
     max-width: 480px;
-    margin: 24px auto;
+    margin: 28px auto;
     text-align: left;
+    border: 1px solid #3a4354;
+    border-radius: 14px;
+    padding: 20px 18px;
   }
+  #level-wrap label {
+    display: block;
+    margin: 26px 0 10px;
+  }
+  #level-wrap label:first-child { margin-top: 0; }
   #level-bar {
     height: 20px;
     background: #223;
@@ -79,7 +89,7 @@
     background: #fc6;
   }
   label { font-size: 0.9rem; color: #9ab; }
-  input[type=range] { width: 100%; }
+  input[type=range] { width: 100%; margin: 2px 0 4px; }
   #err { color: #f88; }
   #history {
     max-width: 480px;
@@ -93,7 +103,7 @@
 <header>
   <a class="back" href="index.html">←</a>
   <div class="title">⏱️ 音響ストップウォッチ</div>
-  <button id="missionBtn" class="hbtn" title="チュートリアル">🔰</button>
+  <button id="missionBtn" class="hbtn" title="チュートリアル"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="チュートリアル" style="display:block"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg></button>
 </header>
 
 <div id="tutorialMount"></div>   <!-- 🔰チュートリアルのパネルはここに tutorial.js が差し込む -->
@@ -105,12 +115,12 @@
 <button id="reset">リセット</button>
 
 <div id="level-wrap">
-  <label>いまの音の大きさ（黄色い線をこえたら反応）</label>
+  <label>いまの音の大きさ</label>
   <div id="level-bar">
     <div id="level-fill"></div>
     <div id="threshold-mark"></div>
   </div>
-  <label>反応する大きさ（しきい値）：<span id="th-val"></span></label>
+  <label>反応する大きさ：<span id="th-val"></span></label>
   <input type="range" id="th" min="0.05" max="0.8" step="0.01" value="0.25">
   <label>反響を無視する時間：<span id="echo-val"></span> 秒</label>
   <input type="range" id="echo" min="0" max="3" step="0.1" value="0.3">
@@ -118,9 +128,6 @@
 
 <div id="history"></div>
 <p id="err"></p>
-<p style="color:#789; font-size:0.85rem;">
-  たたくたびに止まる・動くをくり返す（音速の測定、落ちる音・はずむ音の間かくなど）
-</p>
 
 <script src="tutorial.js"></script>
 <script>
@@ -331,6 +338,23 @@ document.addEventListener('visibilitychange', () => {
   if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
   analyser = null;
   setIdle();
+});
+</script>
+<script src="driver.js"></script>
+<script src="tour.js"></script>
+<script>
+// オンボーディングツアー（このページの3ステップ定義。エンジンは tour.js、説明は各20文字以内）
+// 最後は必ず🔰へ誘導して、体験チュートリアルへつなげる。
+createOnboardingTour({
+  key: 'phylab-sw-tour-seen',
+  steps: [
+    { element: '#time',
+      popover: { title: 'タイマー', description: '音がするたび動く⇄止まる', side: 'bottom', align: 'center' } },
+    { element: '#btn',
+      popover: { title: '開始ボタン', description: '押すと最初の音を待つよ', side: 'bottom', align: 'center' } },
+    { element: '#missionBtn',
+      popover: { title: 'チュートリアル', description: '押して使い方を体験してみてね', side: 'bottom' } },
+  ],
 });
 </script>
 <script src="orientation-guard.js"></script>

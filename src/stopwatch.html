@@ -287,7 +287,7 @@ const STEPS = [
   () => { const base = parseFloat(echoSlider.value);
     return { html: () => 'ストップウォッチがすぐ止まるときは、「反響を無視する時間」を右へ動かして下さい（やってみる）',
              on: 'slider-echo', check: () => parseFloat(echoSlider.value) >= base + 0.1, fail: () => '右へ動かしてね' }; },
-  () => ({ html: () => '⬇ で保存すれば、ネットがなくても使える', on: 'dl' }),
+  () => ({ html: () => '⬇ を押すと、アプリをファイルにして持ち帰れる', on: 'dl' }),
 ];
 const MORE = [ () => { const r = rand(RANGE_POOL); return rangeStep(r[0], r[1]); } ];
 

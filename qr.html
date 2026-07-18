@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QRコード（印刷用） | タブレット物理実験ラボ</title>
+<style>
+  /* A4印刷用：白背景・大きなQR・URL文字併記 */
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #fff; color: #1a1a1a;
+    margin: 0; text-align: center;
+  }
+  .sheet { max-width: 720px; margin: 0 auto; padding: 48px 24px; }
+  h1 { font-size: 2rem; margin: 0 0 4px; }
+  .sub { color: #555; margin: 0 0 28px; }
+  img.qr { width: 320px; height: 320px; image-rendering: pixelated; }
+  .url { font-size: 1.25rem; font-weight: bold; margin: 20px 0 6px; word-break: break-all; }
+  .how { color: #555; margin-top: 24px; font-size: 0.95rem; }
+  .noprint { margin-top: 32px; }
+  .noprint a { color: #b8860b; }
+  @media print { .noprint { display: none; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>🔬 タブレット物理実験ラボ</h1>
+  <p class="sub">学校のタブレットのブラウザで動く、物理実験アプリ（インストール不要・無料）</p>
+  <img class="qr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAbwAAAG8AQAAAACNyy1yAAAC/klEQVR4nO1cba7cIAw0Uf+TG7z73w5O4MqYDydpnO1rHVXqjJ7ygDVaaRh5jXFITN9C3b43jwgTHYAcByDHAcj558hJE/v6IKU0n1TTxQzr6ADkhJGTWSHtmqiKGrlIWwZbV/RpzbAcHqDVCHJ+6D/xm7n0duY0nlR3ykx157MZlsMByAnU6oIoM3FNTMRdqNK+AMvhAOS8otUqwWjK3J9158za/UvfuGHiPUDOs1anFq0suSYSoRZ1s9YMrLqA5MLIqX1/r0O6k0o7pa+uzfTFsrc6mGE5HICcqBiATV/C1DHCLSegCauTGZbDBbQaQQ5JDiozl5akGgHA7HJrSKJqNhQFy+EA5IRplZoyjUQ1lUojoTpyql2rTcNYDgcgJ9CvkqI1lkqLcbCtqzKGVp8ArYbFqzVJhr8l/E1CoGic2jJXkgeQ04GWev2zb9ww8R4g5wO/qj/647y1R6oG/aM5iBjAAyQXFQMIxgZqRQLlUAAwQ1Y1gFZdQKuReyvmU7BKzYtO3fbN1zCGVl1Aq4FapWOearlWWpmBoVJo9RHQatzeamdbYaU7rCxK5bpLV89Y225rhAJYDgcgJz5e5d44pFjL8VwAfvUZ0GpsvMqnA6x8/Js22Fs9A1oN86vlcgpgZLlyAjhj/RTbx5YnYOJn5OReTNXfrtr7MPMYv5v4e9gw8R4gx8MMU+02/2CRV/7KxK5g1QHIic1Z0anIilYQO0NWU5eF5XAAcgLjVb5u+XlVsBwKsbofxnI4ADmR9asN0s+/kigv39sBrXqAViPzqwMzrUqmDnCNr5wAlsMByAmOV8kkpq6FK8eQFVp1Aa2+ce9K0itW9IVBTVWZPZda4o6gJ0Crwe8FZPNDP8OAeeRq7OFXnwCtvnGXRZo1KrXfvjJrV+RNgVW+guVwAHJe8avlUrvSYF8cwN7qCdBqoF9lM5Tk3aukh6oyXne52MqYwa8+AVp9Iw9AtuhaMU5dZ86qDWI5HICcCHIS7mC/ByTnAOQ4ADkO/gdyfgJQffDP+aZO+wAAAABJRU5ErkJggg==" alt="QRコード">
+  <div class="url">tatsuro-ueda.github.io/physics-lab/</div>
+  <p class="how">カメラでQRコードを読み取るか、上のアドレスをブラウザに入力してください。<br>
+  加速度・音響ストップウォッチ・GPS を、その場で体験できます。</p>
+  <p class="noprint"><a href="index.html">← アプリにもどる</a>　／　この画面をそのまま印刷できます（余計な部分は印刷されません）</p>
+</div>
+</body>
+</html>

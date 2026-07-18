@@ -94,6 +94,8 @@
   </div>
   <label>反応する大きさ（しきい値）：<span id="th-val"></span></label>
   <input type="range" id="th" min="0.05" max="0.8" step="0.01" value="0.25">
+  <label>反響を無視する時間：<span id="echo-val"></span> 秒</label>
+  <input type="range" id="echo" min="0" max="3" step="0.1" value="0.3">
 </div>
 
 <div id="history"></div>
@@ -112,6 +114,8 @@ const fillEl = document.getElementById('level-fill');
 const thMark = document.getElementById('threshold-mark');
 const thSlider = document.getElementById('th');
 const thVal = document.getElementById('th-val');
+const echoSlider = document.getElementById('echo');
+const echoVal = document.getElementById('echo-val');
 const errEl = document.getElementById('err');
 const historyEl = document.getElementById('history');
 
@@ -120,7 +124,11 @@ let mode = 'idle';       // idle | armed | measuring | done
 let startTime = 0;       // audioCtx.currentTime ベース（高精度）
 let lastTrigger = -10;   // 連続トリガー防止
 let results = [];
-const LOCKOUT = 0.3;     // 秒。1回鳴ってから次を受けつけるまでの間
+
+// 反響を無視する時間（秒）。スタート・ストップ両方の検出後、この時間は次の音を受けつけない
+function echoTime() {
+  return parseFloat(echoSlider.value);
+}
 
 function updateThUI() {
   thVal.textContent = thSlider.value;
@@ -128,6 +136,12 @@ function updateThUI() {
 }
 thSlider.addEventListener('input', updateThUI);
 updateThUI();
+
+function updateEchoUI() {
+  echoVal.textContent = echoTime().toFixed(1);
+}
+echoSlider.addEventListener('input', updateEchoUI);
+updateEchoUI();
 
 btn.addEventListener('click', async () => {
   if (mode !== 'idle' && mode !== 'done') { // 計測を中断
@@ -190,7 +204,7 @@ function loop() {
   fillEl.style.background = peak >= parseFloat(thSlider.value) ? '#fc6' : '#6f9';
 
   const now = audioCtx.currentTime;
-  const triggered = peak >= parseFloat(thSlider.value) && (now - lastTrigger) > LOCKOUT;
+  const triggered = peak >= parseFloat(thSlider.value) && (now - lastTrigger) > echoTime();
 
   if (triggered && mode === 'armed') {
     lastTrigger = now;

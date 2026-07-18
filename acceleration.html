@@ -109,6 +109,11 @@ const playBtn = document.getElementById('playBtn');
 const errEl = document.getElementById('err');
 const gravityCheck = document.getElementById('gravity');
 
+// iOS Safari は W3C仕様・Android と加速度の符号が逆（Apple CoreMotion の流儀）。
+// phyphox-iOS も kG = -9.81 を掛けて反転している（ExperimentSensorInput.swift）ため、同じ補正を行う。
+const IOS_SIGN = (typeof DeviceMotionEvent !== 'undefined' &&
+                  typeof DeviceMotionEvent.requestPermission === 'function') ? -1 : 1;
+
 // ---- タップ操作：線の近く→値を表示／それ以外→拡大・縮小 ----
 const marker = { x: null, y: null, z: null };
 const PAD_MIN = 0.5;      // drawGraphの余白と同じ値（座標計算を一致させる）
@@ -200,7 +205,7 @@ function onMotion(e) {
   const now = performance.now() / 1000;
   if (t0 === null) t0 = now;
   tbuf.push(now - t0);
-  buf.x.push(a.x); buf.y.push(a.y); buf.z.push(a.z);
+  buf.x.push(a.x * IOS_SIGN); buf.y.push(a.y * IOS_SIGN); buf.z.push(a.z * IOS_SIGN);
   AXES.forEach(ax => {
     document.getElementById('val-' + ax).textContent =
       buf[ax][buf[ax].length - 1].toFixed(2) + ' m/s²';

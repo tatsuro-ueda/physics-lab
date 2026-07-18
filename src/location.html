@@ -256,7 +256,7 @@ const tut = createTutorial({
     () => ({
       html: () => '少し歩いて、線や地図が動くのを見よう',
       needsActive: true,
-      tick: (state) => state.totalDist >= TUTORIAL_MOVE_METERS || state.trackLength >= 3,
+      tick: (state) => state.totalDist >= TUTORIAL_MOVE_METERS,
     }),
     () => ({
       html: () => '地図で、どちらへ動いたか見てみよう',

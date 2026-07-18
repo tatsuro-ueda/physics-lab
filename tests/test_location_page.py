@@ -29,6 +29,8 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertIn("tut.event('started')", source)
         self.assertIn("tut.event('zoomed')", source)
         self.assertIn("tut.event('marker')", source)
+        self.assertIn("tut.tick({ totalDist, trackLength: track.length })", source)
+        self.assertNotIn("trackLength >= 3", source)
 
     def test_generated_location_page_has_learning_hooks(self):
         generated = LOCATION_BUILD.read_text(encoding="utf-8")

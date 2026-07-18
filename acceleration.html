@@ -119,8 +119,9 @@
     <div class="m-guess" id="mGuess" hidden>予想：<button data-g="x">x</button><button data-g="y">y</button><button data-g="z">z</button></div>
     <div class="m-note" id="mNote"></div>
     <div class="m-done-btns" id="mDoneBtns" hidden>
-      <button id="mCloseBtn">閉じる</button>
+      <button id="mRestartBtn">最初から</button>
       <button id="mMoreBtn">もっとやる</button>
+      <button id="mCloseBtn">閉じる</button>
     </div>
   </div>
 
@@ -374,6 +375,14 @@ function createXYZLab(cfg) {
     // 🔰ミッション用フック（ページ固有スクリプトから拡大・数値表示を判定するため）
     hasMarker: () => AXES.some(ax => marker[ax] !== null),
     isZoomed: () => document.body.classList.contains('zoom'),
+    // タブ離脱などで計測を止め、センサーを手放す（cfg.stop でページ固有リスナーを解除させる）。
+    // started を戻すので、次に ▶ を押すと cfg.start が再度呼ばれてリスナーが張り直される。
+    release: () => {
+      running = false;
+      started = false;
+      playBtn.textContent = '▶';
+      if (cfg.stop) cfg.stop();
+    },
   };
   return api;
 }
@@ -387,6 +396,7 @@ function createXYZLab(cfg) {
 const IOS_SIGN = (typeof DeviceMotionEvent !== 'undefined' &&
                   typeof DeviceMotionEvent.requestPermission === 'function') ? -1 : 1;
 
+let motionHandler = null;   // devicemotion リスナー（タブ離脱時に解除してセンサーを手放す）
 const lab = createXYZLab({
   unit: 'm/s²',
   digits: 1,        // ヘッダー現在値は小数1桁
@@ -403,17 +413,24 @@ const lab = createXYZLab({
         return '許可の取得に失敗：' + e.message;
       }
     }
-    window.addEventListener('devicemotion', (e) => {
+    motionHandler = (e) => {
       const a = document.getElementById('gravity').checked
         ? e.accelerationIncludingGravity : e.acceleration;
       if (a && a.x !== null) {
         lab.push(a.x * IOS_SIGN, a.y * IOS_SIGN, a.z * IOS_SIGN);
       }
       missionTick(e);
-    });
+    };
+    window.addEventListener('devicemotion', motionHandler);
     return null;
   },
+  stop: () => {   // lab.release() から呼ばれ、センサーを手放す
+    if (motionHandler) { window.removeEventListener('devicemotion', motionHandler); motionHandler = null; }
+  },
 });
+
+// 他のタブ・アプリに切り替えたら計測を止め、センサーを手放す（戻ってきても停止のまま）
+document.addEventListener('visibilitychange', () => { if (document.hidden) lab.release(); });
 
 // ---- 🔰チュートリアル（1題ずつ・ランダム化・自動判定・進捗保存） ----
 // 設計：予想→実験→検証の階段。順序は固定、中身だけランダム。
@@ -429,6 +446,7 @@ const mDots = document.getElementById('mDots');
 const mNote = document.getElementById('mNote');
 const mGuess = document.getElementById('mGuess');
 const mDoneBtns = document.getElementById('mDoneBtns');
+const mRestartBtn = document.getElementById('mRestartBtn');
 const mCloseBtn = document.getElementById('mCloseBtn');
 const mMoreBtn = document.getElementById('mMoreBtn');
 
@@ -551,12 +569,13 @@ const MORE_DEFS = [
     const ax = rand(['x', 'y']);
     let since = null;
     return {
-      html: () => ax + ' の向きに、グーッと加速し続けよう（同じ向きにだんだん速く）',
+      html: () => ax + ' の向きに、だんだん速く動かそう',
       needsMotion: true,
       tick(e) {
         if (!e) return false;
         const l = e.acceleration; if (!l || l.x === null) return false;
-        if (Math.abs(axVal(l, ax)) > 2.5) { if (since === null) since = performance.now(); return performance.now() - since > 1500; }
+        // 緩め：小さめのしきい値を短時間キープすればOK（教室でグイッと動かせば通る）
+        if (Math.abs(axVal(l, ax)) > 1.2) { if (since === null) since = performance.now(); return performance.now() - since > 500; }
         since = null; return false;
       },
     };
@@ -607,7 +626,7 @@ function showComplete() {
   renderDots();
   mBody.innerHTML = '🎉 チュートリアル完了！グラフの読み方をマスターしたね';
   mGuess.hidden = true;
-  mDoneBtns.hidden = false; mCloseBtn.hidden = false; mMoreBtn.hidden = false;
+  mDoneBtns.hidden = false; mRestartBtn.hidden = false; mMoreBtn.hidden = false; mCloseBtn.hidden = false;
   missionBtn.innerHTML = '🔰✅';
 }
 
@@ -628,7 +647,7 @@ function loadStep() {
     } else {
       current = rand(MORE_DEFS)();
     }
-    mDoneBtns.hidden = false; mCloseBtn.hidden = false; mMoreBtn.hidden = true;   // more中は[閉じる]のみ
+    mDoneBtns.hidden = false; mRestartBtn.hidden = false; mCloseBtn.hidden = false; mMoreBtn.hidden = true;   // more中は[最初から][閉じる]
   }
   mBody.innerHTML = mBodyLabel() + current.html();
   mGuess.hidden = !current.guess;
@@ -671,9 +690,10 @@ missionBtn.addEventListener('click', () => {
   try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
 });
 
-// [閉じる]／[もっとやる]
-mCloseBtn.addEventListener('click', () => { panel.hidden = true; });
+// [最初から]／[もっとやる]／[閉じる]
+mRestartBtn.addEventListener('click', () => { mode = 'tutorial'; stepIndex = 0; saveStep(); loadStep(); });
 mMoreBtn.addEventListener('click', () => { mode = 'more'; loadStep(); });
+mCloseBtn.addEventListener('click', () => { panel.hidden = true; });
 
 // 初期化：パネルは畳んだまま。初回訪問だけ🔰を数回点滅させて気づかせる。
 loadStep();

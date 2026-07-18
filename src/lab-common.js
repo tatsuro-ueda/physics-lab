@@ -230,6 +230,14 @@ function createXYZLab(cfg) {
     // 🔰ミッション用フック（ページ固有スクリプトから拡大・数値表示を判定するため）
     hasMarker: () => AXES.some(ax => marker[ax] !== null),
     isZoomed: () => document.body.classList.contains('zoom'),
+    // タブ離脱などで計測を止め、センサーを手放す（cfg.stop でページ固有リスナーを解除させる）。
+    // started を戻すので、次に ▶ を押すと cfg.start が再度呼ばれてリスナーが張り直される。
+    release: () => {
+      running = false;
+      started = false;
+      playBtn.textContent = '▶';
+      if (cfg.stop) cfg.stop();
+    },
   };
   return api;
 }

@@ -22,6 +22,11 @@ class LocationPageSourceTest(unittest.TestCase):
 
         self.assertIn('id="missionBtn"', generated)
         self.assertIn('id="tutorialMount"', generated)
+        self.assertIn('driver-popover', generated)
+        self.assertIn('window.createTutorial', generated)
+        self.assertIn('window.createOnboardingTour', generated)
+        self.assertNotIn('<script src="driver.js"></script>', generated)
+        self.assertNotIn('<link rel="stylesheet" href="driver.css">', generated)
 
 
 if __name__ == "__main__":

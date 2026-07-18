@@ -51,11 +51,12 @@
   .tab.active { color: var(--phx-orange); border-bottom-color: var(--phx-orange); }
   main { max-width: 760px; margin: 0 auto; padding: 8px; }
   .values {
-    display: grid;
+    display: none;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
     margin-bottom: 10px;
   }
+  .values.visible { display: grid; }
   .vcard {
     background: #2b2b2b;
     border: 1px solid #333;
@@ -63,12 +64,14 @@
     padding: 8px;
     text-align: center;
   }
+  .vcard.wide { grid-column: 1 / -1; }
   .vcard .label { font-size: 0.75rem; color: #aaa; }
   .vcard .num {
     font-size: 1.1rem;
     font-variant-numeric: tabular-nums;
     color: var(--phx-orange);
   }
+  .vcard.wide .num { font-size: 1.6rem; }
   .vcard .num small { font-size: 0.75rem; color: #888; }
   .card {
     margin-bottom: 10px;
@@ -113,59 +116,91 @@
 </div>
 
 <main>
-  <div class="values" id="valuesRow">
+  <!-- 位置タブの数値カード -->
+  <div class="values visible" id="values-pos">
     <div class="vcard"><div class="label">緯度</div><div class="num" id="lat">--</div></div>
     <div class="vcard"><div class="label">経度</div><div class="num" id="lon">--</div></div>
     <div class="vcard"><div class="label">水平精度（誤差の目安）</div><div class="num" id="accu">-- <small>m</small></div></div>
-    <div class="vcard"><div class="label">移動きょり（合計）</div><div class="num" id="dist">0 <small>m</small></div></div>
+    <div class="vcard"><div class="label">移動距離（合計）</div><div class="num" id="dist">0 <small>m</small></div></div>
   </div>
 
-  <!-- 位置タブ：計測開始地点からの移動量（m） -->
+  <!-- 速度タブの数値カード：速さ（速度の絶対値） -->
+  <div class="values" id="values-spd">
+    <div class="vcard wide"><div class="label">速さ（速度の絶対値）</div><div class="num" id="spdMag">-- <small>m/s</small></div></div>
+  </div>
+
+  <!-- 加速度タブの数値カード：加速度の絶対値 -->
+  <div class="values" id="values-acc">
+    <div class="vcard wide"><div class="label">加速度の絶対値</div><div class="num" id="accMag">-- <small>m/s²</small></div></div>
+  </div>
+
+  <!-- 位置タブ：変位（計測開始地点からの移動量 m） -->
   <div class="card visible" id="card-x" data-tab="pos">
-    <div class="head"><span style="color:var(--ax-x)">位置 X（東西）</span><span class="val" id="val-x">--</span></div>
+    <div class="head"><span style="color:var(--ax-x)">変位 X（東西）</span><span class="val" id="val-x">--</span></div>
     <canvas id="cv-x" width="720" height="300"></canvas>
   </div>
   <div class="card visible" id="card-y" data-tab="pos">
-    <div class="head"><span style="color:var(--ax-y)">位置 Y（南北）</span><span class="val" id="val-y">--</span></div>
+    <div class="head"><span style="color:var(--ax-y)">変位 Y（南北）</span><span class="val" id="val-y">--</span></div>
     <canvas id="cv-y" width="720" height="300"></canvas>
   </div>
   <div class="card visible" id="card-z" data-tab="pos">
-    <div class="head"><span style="color:var(--ax-z)">位置 Z（高さ）</span><span class="val" id="val-z">--</span></div>
+    <div class="head"><span style="color:var(--ax-z)">変位 Z（高さ）</span><span class="val" id="val-z">--</span></div>
     <canvas id="cv-z" width="720" height="300"></canvas>
   </div>
 
-  <!-- 速度タブ -->
-  <div class="card" id="card-spd" data-tab="spd">
-    <div class="head"><span style="color:var(--ax-x)">速度</span><span class="val" id="val-spd">--</span></div>
-    <canvas id="cv-spd" width="720" height="300"></canvas>
+  <!-- 速度タブ：変位の変化から計算 -->
+  <div class="card" id="card-vx" data-tab="spd">
+    <div class="head"><span style="color:var(--ax-x)">速度 X（東西）</span><span class="val" id="val-vx">--</span></div>
+    <canvas id="cv-vx" width="720" height="300"></canvas>
+  </div>
+  <div class="card" id="card-vy" data-tab="spd">
+    <div class="head"><span style="color:var(--ax-y)">速度 Y（南北）</span><span class="val" id="val-vy">--</span></div>
+    <canvas id="cv-vy" width="720" height="300"></canvas>
+  </div>
+  <div class="card" id="card-vz" data-tab="spd">
+    <div class="head"><span style="color:var(--ax-z)">速度 Z（高さ）</span><span class="val" id="val-vz">--</span></div>
+    <canvas id="cv-vz" width="720" height="300"></canvas>
   </div>
 
-  <!-- 加速度タブ（速度の変化から計算） -->
-  <div class="card" id="card-acc" data-tab="acc">
-    <div class="head"><span style="color:var(--ax-x)">加速度（速度の変化から計算）</span><span class="val" id="val-acc">--</span></div>
-    <canvas id="cv-acc" width="720" height="300"></canvas>
+  <!-- 加速度タブ：速度の変化から計算 -->
+  <div class="card" id="card-ax" data-tab="acc">
+    <div class="head"><span style="color:var(--ax-x)">加速度 X（東西）</span><span class="val" id="val-ax">--</span></div>
+    <canvas id="cv-ax" width="720" height="300"></canvas>
+  </div>
+  <div class="card" id="card-ay" data-tab="acc">
+    <div class="head"><span style="color:var(--ax-y)">加速度 Y（南北）</span><span class="val" id="val-ay">--</span></div>
+    <canvas id="cv-ay" width="720" height="300"></canvas>
+  </div>
+  <div class="card" id="card-az" data-tab="acc">
+    <div class="head"><span style="color:var(--ax-z)">加速度 Z（高さ）</span><span class="val" id="val-az">--</span></div>
+    <canvas id="cv-az" width="720" height="300"></canvas>
   </div>
 
   <p id="err"></p>
   <p class="hint" id="hint">
-    ▶ を押して位置情報を「許可」すると計測が始まります。X/Y/Zは計測開始地点からの移動量（m）です。<br>
+    ▶ を押して位置情報を「許可」すると計測が始まります。変位は計測開始地点からの移動量（m）、速度・加速度はその変化から計算します。<br>
     <b>線の上をタップ</b>するとその点の値、<b>線から離れた場所をタップ</b>すると拡大・縮小します。<br>
     屋内ではGPSがとどきにくく、誤差が大きくなります。散歩や坂道で試すと変化が見えます。
   </p>
 </main>
 
 <script>
-// 系列定義：位置X/Y/Z（m）、速度（m/s）、加速度（m/s²）
+// 系列定義：変位X/Y/Z（m）、速度X/Y/Z（m/s）、加速度X/Y/Z（m/s²）
 const SERIES = {
-  x:   { t: [], v: [], color: '#ff9500', unit: 'm',    pad: 1,   digits: 1 },
-  y:   { t: [], v: [], color: '#d4c400', unit: 'm',    pad: 1,   digits: 1 },
-  z:   { t: [], v: [], color: '#e04040', unit: 'm',    pad: 1,   digits: 1 },
-  spd: { t: [], v: [], color: '#ff9500', unit: 'm/s',  pad: 0.5, digits: 1 },
-  acc: { t: [], v: [], color: '#ff9500', unit: 'm/s²', pad: 0.5, digits: 2 },
+  x:  { t: [], v: [], color: '#ff9500', unit: 'm',    pad: 1,   digits: 1 },
+  y:  { t: [], v: [], color: '#d4c400', unit: 'm',    pad: 1,   digits: 1 },
+  z:  { t: [], v: [], color: '#e04040', unit: 'm',    pad: 1,   digits: 1 },
+  vx: { t: [], v: [], color: '#ff9500', unit: 'm/s',  pad: 0.5, digits: 2 },
+  vy: { t: [], v: [], color: '#d4c400', unit: 'm/s',  pad: 0.5, digits: 2 },
+  vz: { t: [], v: [], color: '#e04040', unit: 'm/s',  pad: 0.5, digits: 2 },
+  ax: { t: [], v: [], color: '#ff9500', unit: 'm/s²', pad: 0.5, digits: 2 },
+  ay: { t: [], v: [], color: '#d4c400', unit: 'm/s²', pad: 0.5, digits: 2 },
+  az: { t: [], v: [], color: '#e04040', unit: 'm/s²', pad: 0.5, digits: 2 },
 };
 const KEYS = Object.keys(SERIES);
 const HIT_PX = 30;
-const marker = { x: null, y: null, z: null, spd: null, acc: null };
+const marker = {};
+KEYS.forEach(k => marker[k] = null);
 
 const playBtn = document.getElementById('playBtn');
 const errEl = document.getElementById('err');
@@ -174,7 +209,7 @@ let t0 = null;
 let lastPos = null;
 let totalDist = 0;
 let lat0 = null, lon0 = null, alt0 = null;
-let prevSpd = null, prevSpdT = null;
+let lastZ = 0;   // 高度が取れない端末では0のまま
 
 // ---- タブ切り替え ----
 document.querySelectorAll('.tab').forEach(tab => {
@@ -186,7 +221,8 @@ document.querySelectorAll('.tab').forEach(tab => {
     const name = tab.dataset.tab;
     document.querySelectorAll('.card').forEach(c =>
       c.classList.toggle('visible', c.dataset.tab === name));
-    document.getElementById('valuesRow').style.display = name === 'pos' ? 'grid' : 'none';
+    document.querySelectorAll('.values').forEach(v =>
+      v.classList.toggle('visible', v.id === 'values-' + name));
   });
 });
 
@@ -271,27 +307,49 @@ function onPos(pos) {
   if (t0 === null) t0 = nowS;
   const t = nowS - t0;
 
-  // 開始地点を原点にした移動量（m）に変換
+  // 開始地点を原点にした変位（m）に変換
   const rad = Math.PI / 180, R = 6371000;
   if (lat0 === null) { lat0 = c.latitude; lon0 = c.longitude; }
   const xE = (c.longitude - lon0) * rad * R * Math.cos(lat0 * rad);  // 東西
   const yN = (c.latitude - lat0) * rad * R;                          // 南北
-  pushS('x', t, xE);
-  pushS('y', t, yN);
+  let zU = lastZ;
   if (c.altitude !== null) {
     if (alt0 === null) alt0 = c.altitude;
-    pushS('z', t, c.altitude - alt0);
-  }
-  if (c.speed !== null) {
-    pushS('spd', t, c.speed);
-    // 加速度 = 速度の変化 ÷ 時間
-    if (prevSpd !== null && t > prevSpdT) {
-      pushS('acc', t, (c.speed - prevSpd) / (t - prevSpdT));
-    }
-    prevSpd = c.speed; prevSpdT = t;
+    zU = c.altitude - alt0;
+    lastZ = zU;
   }
 
-  // 移動きょりの積算
+  // 変位を記録し、その変化から速度・加速度を数値微分で求める
+  const sx = SERIES.x;
+  const prevI = sx.v.length - 1;
+  pushS('x', t, xE); pushS('y', t, yN); pushS('z', t, zU);
+
+  if (prevI >= 0) {
+    const dt = t - sx.t[prevI];
+    if (dt > 0) {
+      const vX = (xE - sx.v[prevI]) / dt;
+      const vY = (yN - SERIES.y.v[prevI]) / dt;
+      const vZ = (zU - SERIES.z.v[prevI]) / dt;
+      const prevVI = SERIES.vx.v.length - 1;
+      pushS('vx', t, vX); pushS('vy', t, vY); pushS('vz', t, vZ);
+      document.getElementById('spdMag').innerHTML =
+        Math.hypot(vX, vY, vZ).toFixed(2) + ' <small>m/s</small>';
+
+      if (prevVI >= 0) {
+        const dtv = t - SERIES.vx.t[prevVI];
+        if (dtv > 0) {
+          const aX = (vX - SERIES.vx.v[prevVI]) / dtv;
+          const aY = (vY - SERIES.vy.v[prevVI]) / dtv;
+          const aZ = (vZ - SERIES.vz.v[prevVI]) / dtv;
+          pushS('ax', t, aX); pushS('ay', t, aY); pushS('az', t, aZ);
+          document.getElementById('accMag').innerHTML =
+            Math.hypot(aX, aY, aZ).toFixed(2) + ' <small>m/s²</small>';
+        }
+      }
+    }
+  }
+
+  // 移動距離の積算
   if (lastPos) {
     const d = distMeters(lastPos.latitude, lastPos.longitude, c.latitude, c.longitude);
     if (d > c.accuracy * 0.5) {     // 誤差のゆらぎは足さない
@@ -328,8 +386,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
   playBtn.textContent = '▶';
   t0 = null;
-  lat0 = null; lon0 = null; alt0 = null;
-  prevSpd = null; prevSpdT = null;
+  lat0 = null; lon0 = null; alt0 = null; lastZ = 0;
   totalDist = 0; lastPos = null;
   KEYS.forEach(k => {
     const s = SERIES[k];
@@ -343,6 +400,8 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('lon').textContent = '--';
   document.getElementById('accu').innerHTML = '-- <small>m</small>';
   document.getElementById('dist').innerHTML = '0 <small>m</small>';
+  document.getElementById('spdMag').innerHTML = '-- <small>m/s</small>';
+  document.getElementById('accMag').innerHTML = '-- <small>m/s²</small>';
 });
 
 // ---- 描画（phyphox方式：時間軸を圧縮して全履歴を表示） ----

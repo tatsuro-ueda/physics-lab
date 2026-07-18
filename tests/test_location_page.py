@@ -32,6 +32,17 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertIn("tut.tick({ totalDist, trackLength: track.length })", source)
         self.assertNotIn("trackLength >= 3", source)
 
+    def test_location_page_uses_position_based_route_maps(self):
+        source = LOCATION_SOURCE.read_text(encoding="utf-8")
+
+        self.assertNotIn("const vtrack =", source)
+        self.assertNotIn("const atrack =", source)
+        self.assertIn("track.push({ x: xE, y: yN, speed: null, accel: null })", source)
+        self.assertIn("track[track.length - 1].speed = speedMag", source)
+        self.assertIn("track[track.length - 1].accel = accelMag", source)
+        self.assertIn("metricKey: 'speed'", source)
+        self.assertIn("metricKey: 'accel'", source)
+
     def test_generated_location_page_has_learning_hooks(self):
         generated = LOCATION_BUILD.read_text(encoding="utf-8")
 

@@ -167,6 +167,10 @@
     <div class="head"><span style="color:var(--ax-z)">速度 Z（アプリでは鉛直上向きを正）</span><span class="val" id="val-vz">--</span></div>
     <canvas id="cv-vz" width="720" height="300"></canvas>
   </div>
+  <div class="card" id="card-vmap" data-tab="spd">
+    <div class="head"><span style="color:#a8c26a">速度のようす（北が上・＋が速度ゼロ）</span><span class="val" id="vmap-span"></span></div>
+    <canvas id="cv-vmap" width="720" height="400" style="height:200px"></canvas>
+  </div>
 
   <!-- 加速度タブ：速度の変化から計算 -->
   <div class="card" id="card-ax" data-tab="acc">
@@ -180,6 +184,10 @@
   <div class="card" id="card-az" data-tab="acc">
     <div class="head"><span style="color:var(--ax-z)">加速度 Z（アプリでは鉛直上向きを正）</span><span class="val" id="val-az">--</span></div>
     <canvas id="cv-az" width="720" height="300"></canvas>
+  </div>
+  <div class="card" id="card-amap" data-tab="acc">
+    <div class="head"><span style="color:#a8c26a">加速度のようす（北が上・＋が加速度ゼロ）</span><span class="val" id="amap-span"></span></div>
+    <canvas id="cv-amap" width="720" height="400" style="height:200px"></canvas>
   </div>
 
   <p id="err"></p>
@@ -210,6 +218,8 @@ KEYS.forEach(k => marker[k] = null);
 const playBtn = document.getElementById('playBtn');
 const errEl = document.getElementById('err');
 const track = [];        // 歩いた軌跡（開始地点からの東西・南北の移動量 m）
+const vtrack = [];       // 速度ベクトルの軌跡（vx, vy）
+const atrack = [];       // 加速度ベクトルの軌跡（ax, ay）
 let watchId = null;
 let t0 = null;
 let lastPos = null;
@@ -339,6 +349,7 @@ function onPos(pos) {
       const vZ = (zU - SERIES.z.v[prevI]) / dt;
       const prevVI = SERIES.vx.v.length - 1;
       pushS('vx', t, vX); pushS('vy', t, vY); pushS('vz', t, vZ);
+      vtrack.push({ x: vX, y: vY });   // 速度のようす用
       document.getElementById('spdMag').innerHTML =
         Math.hypot(vX, vY, vZ).toFixed(2) + ' <small>m/s</small>';
 
@@ -349,6 +360,7 @@ function onPos(pos) {
           const aY = (vY - SERIES.vy.v[prevVI]) / dtv;
           const aZ = (vZ - SERIES.vz.v[prevVI]) / dtv;
           pushS('ax', t, aX); pushS('ay', t, aY); pushS('az', t, aZ);
+          atrack.push({ x: aX, y: aY });   // 加速度のようす用
           document.getElementById('accMag').innerHTML =
             Math.hypot(aX, aY, aZ).toFixed(2) + ' <small>m/s²</small>';
         }
@@ -409,10 +421,12 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('dist').innerHTML = '0 <small>m</small>';
   document.getElementById('spdMag').innerHTML = '-- <small>m/s</small>';
   document.getElementById('accMag').innerHTML = '-- <small>m/s²</small>';
-  track.length = 0;
-  document.getElementById('map-span').textContent = '';
-  const cvm = document.getElementById('cv-map');
-  cvm.getContext('2d').clearRect(0, 0, cvm.width, cvm.height);
+  track.length = 0; vtrack.length = 0; atrack.length = 0;
+  [['cv-map', 'map-span'], ['cv-vmap', 'vmap-span'], ['cv-amap', 'amap-span']].forEach(([cvId, spanId]) => {
+    document.getElementById(spanId).textContent = '';
+    const c = document.getElementById(cvId);
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  });
 });
 
 // ---- 描画（phyphox方式：時間軸を圧縮して全履歴を表示） ----
@@ -420,29 +434,36 @@ function draw() {
   if (watchId === null) return;
   requestAnimationFrame(draw);
   KEYS.forEach(k => drawGraph(document.getElementById('cv-' + k), SERIES[k], marker[k]));
-  drawMap();
+  drawTrack('cv-map',  'map-span',  track,  10,  'm',    { startRing: true });
+  drawTrack('cv-vmap', 'vmap-span', vtrack, 2,   'm/s',  { origin: true });
+  drawTrack('cv-amap', 'amap-span', atrack, 1,   'm/s²', { origin: true });
 }
 
-// ---- 移動のようす（自前トラック地図。経路全体が収まるよう自動ズーム・北が上） ----
-function drawMap() {
-  const cv = document.getElementById('cv-map');
+// ---- 「◯◯のようす」ペイン共通描画（上から見た軌跡。全体が収まる自動ズーム・北が上） ----
+// pts=[{x,y}...]、minSpan=最小表示はば、opts.startRing=開始点に緑の輪、opts.origin=(0,0)に＋印
+function drawTrack(cvId, spanId, pts, minSpan, unit, opts) {
+  const cv = document.getElementById(cvId);
   const ctx = cv.getContext('2d');
   const W = cv.width, H = cv.height, PAD = 30;
   ctx.clearRect(0, 0, W, H);
-  if (track.length < 1) {
+  if (pts.length < 1) {
     ctx.fillStyle = '#666';
     ctx.font = '16px sans-serif';
     ctx.fillText('データ待ち…（GPSは数秒〜数十秒かかります）', 20, H / 2);
     return;
   }
 
-  // 経路全体が収まる表示範囲（最小10m四方。縦横比は保つ）
+  // 全体が収まる表示範囲（縦横比は保つ）。原点表示ありなら(0,0)も範囲に含める
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (const p of track) {
+  for (const p of pts) {
     if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
     if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
   }
-  const spanX = Math.max(maxX - minX, 10), spanY = Math.max(maxY - minY, 10);
+  if (opts.origin) {
+    if (0 < minX) minX = 0; if (0 > maxX) maxX = 0;
+    if (0 < minY) minY = 0; if (0 > maxY) maxY = 0;
+  }
+  const spanX = Math.max(maxX - minX, minSpan), spanY = Math.max(maxY - minY, minSpan);
   const scale = Math.min((W - PAD * 2) / spanX, (H - PAD * 2) / spanY);
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
   const toX = (x) => W / 2 + (x - cx) * scale;
@@ -452,21 +473,35 @@ function drawMap() {
   ctx.fillStyle = '#89a';
   ctx.font = '14px sans-serif';
   ctx.fillText('北↑', W - 40, 22);
-  document.getElementById('map-span').textContent = 'はば 約' + Math.round(W / scale) + 'm';
+  document.getElementById(spanId).textContent =
+    'はば 約' + Number((W / scale).toPrecision(2)) + unit;
+
+  // 原点（速度・加速度ゼロの位置）に＋印
+  if (opts.origin) {
+    ctx.strokeStyle = '#89a';
+    ctx.lineWidth = 1;
+    const ox = toX(0), oy = toY(0);
+    ctx.beginPath();
+    ctx.moveTo(ox - 8, oy); ctx.lineTo(ox + 8, oy);
+    ctx.moveTo(ox, oy - 8); ctx.lineTo(ox, oy + 8);
+    ctx.stroke();
+  }
 
   // 軌跡
   ctx.strokeStyle = '#a8c26a';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(toX(track[0].x), toY(track[0].y));
-  for (let i = 1; i < track.length; i++) ctx.lineTo(toX(track[i].x), toY(track[i].y));
+  ctx.moveTo(toX(pts[0].x), toY(pts[0].y));
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(toX(pts[i].x), toY(pts[i].y));
   ctx.stroke();
 
-  // スタート地点（緑の輪）と現在地（黄色の点）
-  ctx.strokeStyle = '#6f9';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(toX(track[0].x), toY(track[0].y), 6, 0, Math.PI * 2); ctx.stroke();
-  const last = track[track.length - 1];
+  // 開始点（緑の輪）と現在（黄色の点）
+  if (opts.startRing) {
+    ctx.strokeStyle = '#6f9';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(toX(pts[0].x), toY(pts[0].y), 6, 0, Math.PI * 2); ctx.stroke();
+  }
+  const last = pts[pts.length - 1];
   ctx.fillStyle = '#ffe000';
   ctx.beginPath(); ctx.arc(toX(last.x), toY(last.y), 6, 0, Math.PI * 2); ctx.fill();
 }

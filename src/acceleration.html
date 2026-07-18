@@ -214,6 +214,7 @@ const STEPS = [
   () => ({ html: () => '⏸ を押して、グラフを止めよう', tick: () => !lab.isRunning() }),
   () => ({ html: () => '線の上をタップして、その点の値を読もう', tick: () => lab.hasMarker() }),
   () => ({ html: () => 'グラフをもう一度タップして、元の大きさに戻そう', tick: () => !lab.isZoomed() }),
+  () => ({ html: () => '⬇ で保存すれば、ネットがなくても使える', on: 'dl' }),
 ];
 
 const MORE_DIRS = [
@@ -282,6 +283,9 @@ const tut = createTutorial({
 // ▶ を押した直後にも判定（拡大/値読み/⏸ 用の 200ms ポールと合わせる）
 document.getElementById('playBtn').addEventListener('click', () => setTimeout(() => tut.tick(null), 50));
 setInterval(() => tut.tick(null), 200);
+
+// ⬇ タップをチュートリアルへ通知（保存ステップ用。ダウンロード自体はそのまま実行される）
+document.querySelector('a.dl').addEventListener('click', () => tut.event('dl'));
 </script>
 </body>
 </html>

@@ -477,6 +477,7 @@ const STEPS = [
   () => { const base = parseFloat(echoSlider.value);
     return { html: () => 'ストップウォッチがすぐ止まるときは、「反響を無視する時間」を右へ動かして下さい（やってみる）',
              on: 'slider-echo', check: () => parseFloat(echoSlider.value) >= base + 0.1, fail: () => '右へ動かしてね' }; },
+  () => ({ html: () => '⬇ で保存すれば、ネットがなくても使える', on: 'dl' }),
 ];
 const MORE = [ () => { const r = rand(RANGE_POOL); return rangeStep(r[0], r[1]); } ];
 
@@ -492,6 +493,9 @@ const tut = createTutorial({
 // スライダー操作をチュートリアルへ通知（環境調整ステップ用）
 thSlider.addEventListener('input', () => tut.event('slider-th'));
 echoSlider.addEventListener('input', () => tut.event('slider-echo'));
+
+// ⬇ タップをチュートリアルへ通知（保存ステップ用。ダウンロード自体はそのまま実行される）
+document.querySelector('a.dl').addEventListener('click', () => tut.event('dl'));
 
 // 別タブ・別アプリに移ってフォーカスが外れたら、マイクを手放して計測をidleへ戻す
 // （チュートリアルの進捗 localStorage は残す）。

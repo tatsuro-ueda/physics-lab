@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>位置（GPS） | タブレット物理実験ラボ</title>
 <style>
-  :root { --phx-orange: #ffe000; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
+.driver-popover{all:unset;font-family:var(--driver-popover-font-family,"Helvetica Neue", Inter, ui-sans-serif, "Apple Color Emoji", Helvetica, Arial, sans-serif);box-sizing:border-box;color:#2d2d2d;z-index:1000000000;background-color:#fff;border-radius:5px;min-width:250px;max-width:300px;margin:0;padding:15px;position:fixed;top:0;right:0;box-shadow:0 1px 10px #0006}.driver-popover-title{zoom:1;margin:0;font-size:19px;font-weight:700;line-height:1.5;display:block;position:relative}.driver-popover-close-btn{all:unset;cursor:pointer;color:#d2d2d2;z-index:1;text-align:center;width:32px;height:28px;font-size:18px;font-weight:500;transition:color .2s;position:absolute;top:0;right:0}.driver-popover-close-btn:hover,.driver-popover-close-btn:focus{color:#2d2d2d}.driver-popover-title[style*=block]+.driver-popover-description{margin-top:5px}.driver-popover-description{zoom:1;margin-bottom:0;font-size:14px;font-weight:400;line-height:1.5}.driver-popover-footer{text-align:right;zoom:1;justify-content:space-between;align-items:center;margin-top:15px;display:flex}.driver-popover-progress-text{color:#727272;zoom:1;font-size:13px;font-weight:400}.driver-popover-footer-btn{all:unset;box-sizing:border-box;color:#2d2d2d;cursor:pointer;zoom:1;background-color:#fff;border:1px solid #ccc;border-radius:3px;outline:0;padding:3px 7px;font-size:12px;line-height:1.3;text-decoration:none;display:inline-block}.driver-popover-footer .driver-popover-btn-disabled{opacity:.5;pointer-events:none}.driver-popover-footer-btn:hover,.driver-popover-footer-btn:focus{background-color:#f7f7f7}.driver-popover-navigation-btns{flex-grow:1;justify-content:flex-end;display:flex}.driver-popover-navigation-btns button+button{margin-left:4px}.driver-popover-arrow{content:"";border:5px solid #fff;position:absolute}.driver-popover-arrow-side-over{display:none}.driver-popover-arrow-side-left{border-top-color:#0000;border-bottom-color:#0000;border-right-color:#0000;left:100%}.driver-popover-arrow-side-right{border-top-color:#0000;border-bottom-color:#0000;border-left-color:#0000;right:100%}.driver-popover-arrow-side-top{border-bottom-color:#0000;border-left-color:#0000;border-right-color:#0000;top:100%}.driver-popover-arrow-side-bottom{border-top-color:#0000;border-left-color:#0000;border-right-color:#0000;bottom:100%}.driver-popover-arrow-side-center,.driver-popover-arrow-none{display:none}.driver-active .driver-overlay{pointer-events:none}.driver-active.driver-no-scroll{overflow:hidden}.driver-active *{pointer-events:none}.driver-active .driver-active-element,.driver-active .driver-active-element *,.driver-popover,.driver-popover *{pointer-events:auto}@keyframes animate-fade-in{0%{opacity:0}to{opacity:1}}.driver-fade .driver-overlay{animation:animate-fade-in var(--driver-animation-duration,.4s) ease-in-out}.driver-fade .driver-popover{animation:animate-fade-in var(--driver-animation-duration,.4s)}.driver-active-element-parent-no-scroll{overflow:hidden!important}.driver-no-interaction,.driver-no-interaction *{pointer-events:none!important}
+</style>
+<style>
+  :root { --phx-orange: #ffe000; --ax-x: #4C8DF0; --ax-y: #4FC96B; --ax-z: #F2C744; }
+  /* 既存CSSは残しつつ、このTaskでは共有アセット導線だけ通す */
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -107,6 +111,7 @@
   <div class="title">位置（GPS）</div>
   <button id="playBtn" title="計測開始"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="計測開始"><path d="M8 5v14l11-7z"/></svg></button>
   <button id="resetBtn" title="計測を止めてデータを消す"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="削除"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+  <button id="missionBtn" title="チュートリアル（位置の見方を体験で学ぶ）"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="チュートリアル"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg></button>
 </header>
 
 <div class="tabs">
@@ -116,6 +121,7 @@
 </div>
 
 <main>
+  <div id="tutorialMount"></div>
   <!-- 位置タブの数値カード -->
   <div class="values visible" id="values-pos">
     <div class="vcard"><div class="label">緯度</div><div class="num" id="lat">--</div></div>
@@ -197,6 +203,299 @@
   </p>
 </main>
 
+<script>
+this.driver=this.driver||{},this.driver.js=(function(e){Object.defineProperty(e,Symbol.toStringTag,{value:`Module`});let t=[`pointerdown`,`mousedown`,`pointerup`,`mouseup`,`click`],n=new WeakMap;function r(e,r,a){i(e);let o=t=>{let n=t.target;e.contains(n)&&((!a||a(n))&&(t.preventDefault(),t.stopPropagation(),t.stopImmediatePropagation()),t.type===`click`&&r?.(t))};for(let e of t)document.addEventListener(e,o,!0);n.set(e,o)}function i(e){let r=n.get(e);if(r){for(let e of t)document.removeEventListener(e,r,!0);n.delete(e)}}function a(e,t){let n=e.wrapper.getBoundingClientRect();return{width:n.width+t,height:n.height+t,realWidth:n.width,realHeight:n.height}}function o(e,t){let{elementDimensions:n,popoverDimensions:r,popoverPadding:i,popoverArrowDimensions:a}=t;return e===`start`?Math.max(Math.min(n.top-i,window.innerHeight-r.realHeight-a.width),a.width):e===`end`?Math.max(Math.min(n.top-r?.realHeight+n.height+i,window.innerHeight-r?.realHeight-a.width),a.width):e===`center`?Math.max(Math.min(n.top+n.height/2-r?.realHeight/2,window.innerHeight-r?.realHeight-a.width),a.width):0}function s(e,t){let{elementDimensions:n,popoverDimensions:r,popoverPadding:i,popoverArrowDimensions:a}=t;return e===`start`?Math.max(Math.min(n.left-i,window.innerWidth-r.realWidth-a.width),a.width):e===`end`?Math.max(Math.min(n.left-r?.realWidth+n.width+i,window.innerWidth-r?.realWidth-a.width),a.width):e===`center`?Math.max(Math.min(n.left+n.width/2-r?.realWidth/2,window.innerWidth-r?.realWidth-a.width),a.width):0}function c(e,t,n){let{align:r,side:i}=n,c=n.centered?`over`:i,l=n.padding,u=a(e,n.offset),d=e.arrow.getBoundingClientRect(),p=t.getBoundingClientRect(),m=p.top-u.height,h=m>=0,g=window.innerHeight-(p.bottom+u.height),_=g>=0,v=p.left-u.width,y=v>=0,b=window.innerWidth-(p.right+u.width),x=b>=0,S=!h&&!_&&!y&&!x,C=c;if(c===`top`&&h?x=y=_=!1:c===`bottom`&&_?x=y=h=!1:c===`left`&&y?x=h=_=!1:c===`right`&&x&&(y=h=_=!1),c===`over`){let t=window.innerWidth/2-u.realWidth/2,n=window.innerHeight/2-u.realHeight/2;e.wrapper.style.left=`${t}px`,e.wrapper.style.right=`auto`,e.wrapper.style.top=`${n}px`,e.wrapper.style.bottom=`auto`}else if(S){let t=window.innerWidth/2-u?.realWidth/2;e.wrapper.style.left=`${t}px`,e.wrapper.style.right=`auto`,e.wrapper.style.bottom=`10px`,e.wrapper.style.top=`auto`}else if(y){let t=Math.min(v,window.innerWidth-u?.realWidth-d.width),n=o(r,{elementDimensions:p,popoverDimensions:u,popoverPadding:l,popoverArrowDimensions:d});e.wrapper.style.left=`${t}px`,e.wrapper.style.top=`${n}px`,e.wrapper.style.bottom=`auto`,e.wrapper.style.right=`auto`,C=`left`}else if(x){let t=Math.min(b,window.innerWidth-u?.realWidth-d.width),n=o(r,{elementDimensions:p,popoverDimensions:u,popoverPadding:l,popoverArrowDimensions:d});e.wrapper.style.right=`${t}px`,e.wrapper.style.top=`${n}px`,e.wrapper.style.bottom=`auto`,e.wrapper.style.left=`auto`,C=`right`}else if(h){let t=Math.min(m,window.innerHeight-u.realHeight-d.width),n=s(r,{elementDimensions:p,popoverDimensions:u,popoverPadding:l,popoverArrowDimensions:d});e.wrapper.style.top=`${t}px`,e.wrapper.style.left=`${n}px`,e.wrapper.style.bottom=`auto`,e.wrapper.style.right=`auto`,C=`top`}else if(_){let t=Math.min(g,window.innerHeight-u?.realHeight-d.width),n=s(r,{elementDimensions:p,popoverDimensions:u,popoverPadding:l,popoverArrowDimensions:d});e.wrapper.style.left=`${n}px`,e.wrapper.style.bottom=`${t}px`,e.wrapper.style.top=`auto`,e.wrapper.style.right=`auto`,C=`bottom`}f(e,S?`over`:C,r,t),[...e.wrapper.classList].filter(e=>e.startsWith(`driver-popover-side-`)||e.startsWith(`driver-popover-align-`)).forEach(t=>e.wrapper.classList.remove(t)),e.wrapper.classList.add(`driver-popover-side-${C}`),e.wrapper.classList.add(`driver-popover-align-${r}`)}function l(e,t,n,r,i,a=10){let o=r-n;return e<=n&&t>=r?i===`start`?15+a/2:i===`end`?o-15-a/2:o/2:(Math.min(Math.max(e,n),r)+Math.min(Math.max(t,n),r))/2-n}function u(e,t,n=10){let r=t-15-n;if(r<15)return Math.max(0,(t-n)/2);let i=e-n/2;return Math.min(Math.max(i,15),r)}function d(e,t,n){return e===`left`||e===`right`?t.bottom>n.top&&t.top<n.bottom?e:t.bottom<=n.top?`bottom`:`top`:t.right>n.left&&t.left<n.right?e:t.right<=n.left?`right`:`left`}function f(e,t,n,r){let i=e.arrow;if(i.className=`driver-popover-arrow`,i.style.top=``,i.style.right=``,i.style.bottom=``,i.style.left=``,t===`over`){i.classList.add(`driver-popover-arrow-none`);return}let a=r.getBoundingClientRect(),o=e.wrapper.getBoundingClientRect(),s=d(t,a,o);i.classList.add(`driver-popover-arrow-side-${s}`);let c=i.getBoundingClientRect().width||10;if(s===`left`||s===`right`){let e=l(a.top,a.bottom,o.top,o.bottom,n,c);i.style.top=`${u(e,o.height,c)}px`}else{let e=l(a.left,a.right,o.left,o.right,n,c);i.style.left=`${u(e,o.width,c)}px`}}function p(e){return typeof e==`function`?e():typeof e==`string`?document.querySelector(e):e}function m(e){let t=window.getComputedStyle(e);return[t.overflow,t.overflowX,t.overflowY].some(e=>e===`auto`||e===`scroll`)}function h(e,t,n,r){return(e/=r/2)<1?n/2*e*e+t:-n/2*(--e*(e-2)-1)+t}function g(e){let t=`a[href]:not([disabled]), button:not([disabled]), textarea:not([disabled]), input[type="text"]:not([disabled]), input[type="radio"]:not([disabled]), input[type="checkbox"]:not([disabled]), select:not([disabled])`;return e.flatMap(e=>{let n=e.matches(t),r=Array.from(e.querySelectorAll(t));return[...n?[e]:[],...r]}).filter(e=>getComputedStyle(e).pointerEvents!==`none`&&b(e))}function _(e,t){if(!e||y(e))return;let n=e.offsetHeight>window.innerHeight;e.scrollIntoView({behavior:!t||v(e)?`auto`:`smooth`,inline:`center`,block:n?`start`:`center`})}function v(e){if(!e||!e.parentElement)return;let t=e.parentElement;return t.scrollHeight>t.clientHeight}function y(e){let t=e.getBoundingClientRect();return t.top>=0&&t.left>=0&&t.bottom<=(window.innerHeight||document.documentElement.clientHeight)&&t.right<=(window.innerWidth||document.documentElement.clientWidth)}function b(e){return!!(e.offsetWidth||e.offsetHeight||e.getClientRects().length)}function x(e){e&&(e.wrapper.style.display=`none`)}function S(e,t){let n=ee();document.body.appendChild(n.wrapper);let{title:i,description:a,showButtons:o,disableButtons:s,showProgress:l,nextBtnText:u,prevBtnText:d,progressText:f}=t;n.nextButton.innerHTML=u,n.previousButton.innerHTML=d,n.progress.innerHTML=f,t.doneButton&&n.nextButton.classList.add(`driver-popover-done-btn`),i?(n.title.innerHTML=i,n.title.style.display=`block`):n.title.style.display=`none`,a?(n.description.innerHTML=a,n.description.style.display=`block`):n.description.style.display=`none`;let p=o.includes(`next`)||o.includes(`previous`)||l;n.closeButton.style.display=o.includes(`close`)?`block`:`none`,p?(n.footer.style.display=`flex`,n.progress.style.display=l?`block`:`none`,n.nextButton.style.display=o.includes(`next`)?`block`:`none`,n.previousButton.style.display=o.includes(`previous`)?`block`:`none`):n.footer.style.display=`none`,s.includes(`next`)&&(n.nextButton.disabled=!0,n.nextButton.classList.add(`driver-popover-btn-disabled`)),s.includes(`previous`)&&(n.previousButton.disabled=!0,n.previousButton.classList.add(`driver-popover-btn-disabled`)),s.includes(`close`)&&(n.closeButton.disabled=!0,n.closeButton.classList.add(`driver-popover-btn-disabled`));let m=n.wrapper;m.style.display=`block`,m.style.left=``,m.style.top=``,m.style.bottom=``,m.style.right=``,m.id=`driver-popover-content`,m.setAttribute(`role`,`dialog`),m.setAttribute(`aria-labelledby`,`driver-popover-title`),m.setAttribute(`aria-describedby`,`driver-popover-description`);let h=n.arrow;h.className=`driver-popover-arrow`,m.className=`driver-popover ${t.popoverClass||``}`.trim(),r(n.wrapper,e=>{let n=e.target;if(n.closest(`.driver-popover-next-btn`))return t.onNextClick?.();if(n.closest(`.driver-popover-prev-btn`))return t.onPrevClick?.();if(n.closest(`.driver-popover-close-btn`))return t.onCloseClick?.()},e=>n.description.contains(e)||n.title.contains(e)?!1:!!e.closest(`.driver-popover-prev-btn, .driver-popover-next-btn, .driver-popover-close-btn`)),t.onRender?.(n),c(n,e,t.position),C(n,e,t.position),_(m,t.smoothScroll);let v=g([m,e]);return v.length>0&&v[0].focus(),n}function C(e,t,n){e.wrapper.querySelectorAll(`img`).forEach(r=>{if(r.complete)return;let i=()=>c(e,t,n);r.addEventListener(`load`,i,{once:!0}),r.addEventListener(`error`,i,{once:!0})})}function ee(){let e=document.createElement(`div`);e.classList.add(`driver-popover`);let t=document.createElement(`div`);t.classList.add(`driver-popover-arrow`);let n=document.createElement(`header`);n.id=`driver-popover-title`,n.classList.add(`driver-popover-title`),n.style.display=`none`,n.innerText=`Popover Title`;let r=document.createElement(`div`);r.id=`driver-popover-description`,r.classList.add(`driver-popover-description`),r.style.display=`none`,r.innerText=`Popover description is here`;let i=document.createElement(`button`);i.type=`button`,i.classList.add(`driver-popover-close-btn`),i.setAttribute(`aria-label`,`Close`),i.innerHTML=`&times;`;let a=document.createElement(`footer`);a.classList.add(`driver-popover-footer`);let o=document.createElement(`span`);o.classList.add(`driver-popover-progress-text`),o.innerText=``;let s=document.createElement(`span`);s.classList.add(`driver-popover-navigation-btns`);let c=document.createElement(`button`);c.type=`button`,c.classList.add(`driver-popover-prev-btn`,`driver-popover-footer-btn`),c.innerHTML=`Previous`;let l=document.createElement(`button`);return l.type=`button`,l.classList.add(`driver-popover-next-btn`,`driver-popover-footer-btn`),l.innerHTML=`Next`,s.appendChild(c),s.appendChild(l),a.appendChild(o),a.appendChild(s),e.appendChild(i),e.appendChild(t),e.appendChild(n),e.appendChild(r),e.appendChild(a),{wrapper:e,arrow:t,title:n,description:r,footer:a,previousButton:c,nextButton:l,closeButton:i,footerButtons:s,progress:o}}function w(e){e&&(i(e.wrapper),e.wrapper.parentElement?.removeChild(e.wrapper))}function T(e,t){let n=window.innerWidth,r=window.innerHeight,i=t.padding,a=t.radius,o=e.width+i*2,s=e.height+i*2,c=Math.min(a,o/2,s/2),l=Math.floor(Math.max(c,0)),u=e.x-i+l,d=e.y-i,f=o-l*2,p=s-l*2;return`M${n},0L0,0L0,${r}L${n},${r}L${n},0Z
+    M${u},${d} h${f} a${l},${l} 0 0 1 ${l},${l} v${p} a${l},${l} 0 0 1 -${l},${l} h-${f} a${l},${l} 0 0 1 -${l},-${l} v-${p} a${l},${l} 0 0 1 ${l},-${l} z`}function E(e,t,n,r,i){let a=e.getState(`__activeStagePosition`),o=a||r.getBoundingClientRect(),s=i.getBoundingClientRect();a={x:h(t,o.x,s.x-o.x,n),y:h(t,o.y,s.y-o.y,n),width:h(t,o.width,s.width-o.width,n),height:h(t,o.height,s.height-o.height,n)},A(e,a),e.setState(`__activeStagePosition`,a)}function D(e,t){if(!t)return;let n=t.getBoundingClientRect(),r={x:n.x,y:n.y,width:n.width,height:n.height};e.setState(`__activeStagePosition`,r),A(e,r)}function O(e){let t=e.getState(`__activeStagePosition`),n=e.getState(`__overlaySvg`);if(!t)return;if(!n){console.warn(`No stage svg found.`);return}let r=window.innerWidth,i=window.innerHeight;n.setAttribute(`viewBox`,`0 0 ${r} ${i}`)}function k(e,t){let n=M(e,t);document.body.appendChild(n),r(n,t=>{t.target.tagName===`path`&&e.emit(`overlayClick`)}),e.setState(`__overlaySvg`,n)}function A(e,t){let n=e.getState(`__overlaySvg`);if(!n){k(e,t);return}let r=n.firstElementChild;if(r?.tagName!==`path`)throw Error(`no path element found in stage svg`);r.setAttribute(`d`,T(t,j(e)))}function j(e){return{padding:e.getConfig(`stagePadding`)||0,radius:e.getConfig(`stageRadius`)||0}}function M(e,t){let n=window.innerWidth,r=window.innerHeight,i=document.createElementNS(`http://www.w3.org/2000/svg`,`svg`);i.classList.add(`driver-overlay`,`driver-overlay-animated`),i.setAttribute(`viewBox`,`0 0 ${n} ${r}`),i.setAttribute(`xmlSpace`,`preserve`),i.setAttribute(`xmlnsXlink`,`http://www.w3.org/1999/xlink`),i.setAttribute(`version`,`1.1`),i.setAttribute(`preserveAspectRatio`,`xMinYMin slice`),i.style.fillRule=`evenodd`,i.style.clipRule=`evenodd`,i.style.strokeLinejoin=`round`,i.style.strokeMiterlimit=`2`,i.style.zIndex=`10000`,i.style.position=`fixed`,i.style.top=`0`,i.style.left=`0`,i.style.width=`100%`,i.style.height=`100%`;let a=document.createElementNS(`http://www.w3.org/2000/svg`,`path`);return a.setAttribute(`d`,T(t,j(e))),a.style.fill=e.getConfig(`overlayColor`)||`rgb(0,0,0)`,a.style.opacity=`${e.getConfig(`overlayOpacity`)}`,a.style.pointerEvents=`auto`,a.style.cursor=`auto`,i.appendChild(a),i}function N(e){let t=e.getState(`__overlaySvg`);t&&(i(t),t.remove())}let P=`{{current}} of {{total}}`;function F(e,t){return!(t.skipMissingElement??e.getConfig(`skipMissingElement`))||!t.element?!1:!p(t.element)}function I(e,t,n){let r=e.getConfig(`steps`)||[];for(let i=t;i>=0&&i<r.length;i+=n)if(!F(e,r[i]))return i}function L(e,t){let n=e.getState(`activeIndex`),r=n!==void 0&&I(e,n+1,1)===void 0,i=t?.popover?.onDoneClick||e.getConfig(`onDoneClick`);return r&&i?i:t?.popover?.onNextClick||e.getConfig(`onNextClick`)}function R(e,t){return t?.popover?.onPrevClick||e.getConfig(`onPrevClick`)}function z(e,t){return t?.popover?.onCloseClick||e.getConfig(`onCloseClick`)}function B(e,t,n){let r=e.getConfig(`steps`)||[],i=r[t],a=i.popover||{},o=I(e,t+1,1)!==void 0,s=I(e,t-1,-1)!==void 0,c=a.doneBtnText||e.getConfig(`doneBtnText`)||`Done`,l=e.getConfig(`allowClose`),u=a.showProgress===void 0?e.getConfig(`showProgress`):a.showProgress,d=(a.progressText||e.getConfig(`progressText`)||P).replace(`{{current}}`,`${t+1}`).replace(`{{total}}`,`${r.length}`),f=a.showButtons||e.getConfig(`showButtons`),p=[`next`,`previous`,...l?[`close`]:[]].filter(e=>!f?.length||f.includes(e)),m=a.onNextClick||e.getConfig(`onNextClick`),h=a.onPrevClick||e.getConfig(`onPrevClick`),g=a.onCloseClick||e.getConfig(`onCloseClick`);return{...i,popover:{showButtons:p,nextBtnText:o?void 0:c,disableButtons:[...s?[]:[`previous`]],showProgress:u,onNextClick:m||n.onNextClick,onPrevClick:h||n.onPrevClick,onCloseClick:g||n.onCloseClick,...a,progressText:d}}}function V(e,t,n){let r=e.getConfig(`stagePadding`)||0;return{side:n.popover?.side||`bottom`,align:n.popover?.align||`start`,offset:r+(e.getConfig(`popoverOffset`)||0),padding:r,centered:t.id===`driver-dummy-element`}}function H(e,t,n){let r=n.popover||{},i=e.getState(`activeIndex`),a=i!==void 0&&I(e,i+1,1)===void 0;return{title:r.title,description:r.description,showButtons:r.showButtons||e.getConfig(`showButtons`),disableButtons:r.disableButtons||e.getConfig(`disableButtons`)||[],showProgress:r.showProgress||e.getConfig(`showProgress`)||!1,progressText:r.progressText??(e.getConfig(`progressText`)||P),nextBtnText:r.nextBtnText??(e.getConfig(`nextBtnText`)||`Next`),prevBtnText:r.prevBtnText??(e.getConfig(`prevBtnText`)||`Previous`),doneButton:a,popoverClass:r.popoverClass||e.getConfig(`popoverClass`)||``,smoothScroll:e.getConfig(`smoothScroll`),onNextClick:()=>{let r=L(e,n);return r?r(t,n,e.getHookOpts()):e.emit(`nextClick`)},onPrevClick:()=>{let r=R(e,n);return r?r(t,n,e.getHookOpts()):e.emit(`prevClick`)},onCloseClick:()=>{let r=z(e,n);return r?r(t,n,e.getHookOpts()):e.emit(`closeClick`)},onRender:t=>{e.setState(`popover`,t),(r.onPopoverRender||e.getConfig(`onPopoverRender`))?.(t,e.getHookOpts())},position:V(e,t,n)}}function U(e,t,n){w(e.getState(`popover`)),S(t,H(e,t,n))}function W(e,t,n){let r=e.getState(`popover`);r&&c(r,t,V(e,t,n))}function G(){let e=document.getElementById(`driver-dummy-element`);if(e)return e;let t=document.createElement(`div`);return t.id=`driver-dummy-element`,t.style.width=`0`,t.style.height=`0`,t.style.pointerEvents=`none`,t.style.opacity=`0`,t.style.position=`fixed`,t.style.top=`50%`,t.style.left=`50%`,document.body.appendChild(t),t}function K(e,t){let n=p(t.element);n||(n=G()),J(e,n,t)}function q(e){let t=e.getState(`__activeElement`),n=e.getState(`__activeStep`);t&&(D(e,t),O(e),W(e,t,n))}function J(e,t,n){let r=e.getConfig(`duration`)||400,i=Date.now(),a=e.getState(`__activeStep`),o=e.getState(`__activeElement`)||t,s=!o||o===t,c=t.id===`driver-dummy-element`,l=o.id===`driver-dummy-element`,u=e.getConfig(`animate`),d=n.onHighlightStarted||e.getConfig(`onHighlightStarted`),f=n?.onHighlighted||e.getConfig(`onHighlighted`),p=a?.onDeselected||e.getConfig(`onDeselected`),h=e.getHookOpts();!s&&p&&p(l?void 0:o,a,h),d&&d(c?void 0:t,n,h);let g=!s&&u,v=!1;x(e.getState(`popover`)),e.setState(`previousStep`,a),e.setState(`previousElement`,o),e.setState(`activeStep`,n),e.setState(`activeElement`,t);let y=()=>{if(e.getState(`__transitionCallback`)!==y)return;let s=Date.now()-i,l=r-s<=r/2;n.popover&&l&&!v&&g&&(U(e,t,n),v=!0),e.getConfig(`animate`)&&s<r?E(e,s,r,o,t):(D(e,t),f&&f(c?void 0:t,n,e.getHookOpts()),e.setState(`__transitionCallback`,void 0),e.setState(`__previousStep`,a),e.setState(`__previousElement`,o),e.setState(`__activeStep`,n),e.setState(`__activeElement`,t)),window.requestAnimationFrame(y)};e.setState(`__transitionCallback`,y),window.requestAnimationFrame(y),_(t,e.getConfig(`smoothScroll`)),!g&&n.popover&&U(e,t,n),document.querySelectorAll(`.driver-active-element-parent`).forEach(e=>{e.classList.remove(`driver-active-element-parent`,`driver-active-element-parent-no-scroll`)}),o.classList.remove(`driver-active-element`,`driver-no-interaction`),o.removeAttribute(`aria-haspopup`),o.removeAttribute(`aria-expanded`),o.removeAttribute(`aria-controls`),(n.disableActiveInteraction??e.getConfig(`disableActiveInteraction`))&&t.classList.add(`driver-no-interaction`);let b=t.parentElement;b&&b!==document.body&&(b.classList.add(`driver-active-element-parent`),m(b)&&b.classList.add(`driver-active-element-parent-no-scroll`)),t.classList.add(`driver-active-element`),t.setAttribute(`aria-haspopup`,`dialog`),t.setAttribute(`aria-expanded`,`true`),t.setAttribute(`aria-controls`,`driver-popover-content`)}function Y(){document.getElementById(`driver-dummy-element`)?.remove(),document.querySelectorAll(`.driver-active-element`).forEach(e=>{let t=e.parentElement;t&&t!==document.body&&t.classList.remove(`driver-active-element-parent`,`driver-active-element-parent-no-scroll`),e.classList.remove(`driver-active-element`,`driver-no-interaction`),e.removeAttribute(`aria-haspopup`),e.removeAttribute(`aria-expanded`),e.removeAttribute(`aria-controls`)})}function X(e){let t=e.getState(`__resizeTimeout`);t&&window.cancelAnimationFrame(t),e.setState(`__resizeTimeout`,window.requestAnimationFrame(()=>q(e)))}function Z(e,t){if(!e.getState(`isInitialized`)||!(t.key===`Tab`||t.keyCode===9))return;let n=e.getState(`__activeElement`),r=e.getState(`popover`)?.wrapper,i=g([...r?[r]:[],...n?[n]:[]]),a=i[0],o=i[i.length-1];t.preventDefault(),t.shiftKey?(i[i.indexOf(document.activeElement)-1]||o)?.focus():(i[i.indexOf(document.activeElement)+1]||a)?.focus()}function Q(e,t){(e.getConfig(`allowKeyboardControl`)??!0)&&(t.key===`Escape`?e.emit(`escapePress`):t.key===`ArrowRight`?e.emit(`arrowRightPress`):t.key===`ArrowLeft`&&e.emit(`arrowLeftPress`))}function te(e,t){let n=e.getState(`__activeElement`),r=t.target;!n||!r||!n.contains(r)||e.emit(`activeElementClick`)}function ne(e){let t=t=>Q(e,t),n=t=>Z(e,t),r=()=>X(e),i=()=>X(e),a=t=>te(e,t);e.setState(`__events`,{onKeyup:t,onKeydown:n,onResize:r,onScroll:i,onClick:a}),window.addEventListener(`keyup`,t,!1),window.addEventListener(`keydown`,n,!1),window.addEventListener(`resize`,r),window.addEventListener(`scroll`,i),document.addEventListener(`click`,a,!1)}function $(e){let t=e.getState(`__events`);t&&(window.removeEventListener(`keyup`,t.onKeyup),window.removeEventListener(`keydown`,t.onKeydown),window.removeEventListener(`resize`,t.onResize),window.removeEventListener(`scroll`,t.onScroll),document.removeEventListener(`click`,t.onClick,!1))}function re(){let e={};function t(t={}){e={animate:!0,duration:400,allowClose:!0,allowScroll:!0,overlayClickBehavior:`close`,overlayOpacity:.7,smoothScroll:!1,disableActiveInteraction:!1,advanceOnClick:!1,skipMissingElement:!1,waitForElement:0,showProgress:!1,stagePadding:10,stageRadius:5,popoverOffset:10,showButtons:[`next`,`previous`,`close`],disableButtons:[],overlayColor:`#000`,...t}}return t(),{getConfig:(t=>t?e[t]:e),configure:t}}function ie(){let e={},t=(t=>t?e[t]:e),n=(t,n)=>{e[t]=n};function r(){e={}}return{getState:t,setState:n,resetState:r}}function ae(){let e={};function t(t,n){e[t]=n}function n(t){e[t]?.()}function r(){e={}}return{listen:t,emit:n,reset:r}}function oe(e={}){let t=re();t.configure(e);let n=ie(),r=ae(),i;return{getConfig:t.getConfig,setConfig:t.configure,getState:n.getState,setState:n.setState,resetState:n.resetState,listen:r.listen,emit:r.emit,resetEmitter:r.reset,getDriver:()=>i,setDriver:e=>{i=e},getHookOpts:e=>{let r=e||n.getState();return{config:t.getConfig(),state:r,driver:i,index:r.activeIndex}}}}function se(e={}){let t=oe(e);function n(){t.getConfig(`allowClose`)&&h()}function r(){let e=t.getConfig(`overlayClickBehavior`);if(t.getConfig(`allowClose`)&&e===`close`){h();return}if(typeof e==`function`){let n=t.getState(`__activeStep`);e(t.getState(`__activeElement`),n,t.getHookOpts());return}if(e===`nextStep`){let e=t.getState(`activeStep`),n=t.getState(`activeElement`),r=L(t,e);if(r){r(n,e,t.getHookOpts());return}i()}}function i(){let e=t.getState(`activeIndex`),n=t.getConfig(`steps`)||[];if(e===void 0)return;let r=e+1;n[r]?m(r):h()}function a(){let e=t.getState(`activeIndex`),n=t.getConfig(`steps`)||[];if(e===void 0)return;let r=e-1;n[r]?m(r):h()}function o(e){(t.getConfig(`steps`)||[])[e]?m(e):h()}function s(){if(t.getState(`__transitionCallback`))return;let e=t.getState(`__activeStep`);if(!e||!(e.advanceOnClick??t.getConfig(`advanceOnClick`)))return;let n=t.getState(`__activeElement`),r=L(t,e);if(r){r(n,e,t.getHookOpts());return}i()}function c(){if(t.getState(`__transitionCallback`))return;let e=t.getState(`activeIndex`),n=t.getState(`__activeStep`),r=t.getState(`__activeElement`);if(e===void 0||n===void 0||!(t.getConfig(`steps`)||[])[e-1])return;let i=R(t,n);if(i)return i(r,n,t.getHookOpts());a()}function l(){if(t.getState(`__transitionCallback`))return;let e=t.getState(`activeIndex`),n=t.getState(`__activeStep`),r=t.getState(`__activeElement`);if(e===void 0||n===void 0)return;let a=L(t,n);if(a)return a(r,n,t.getHookOpts());i()}function u(){t.getState(`isInitialized`)||(t.setState(`isInitialized`,!0),document.body.classList.add(`driver-active`,t.getConfig(`animate`)?`driver-fade`:`driver-simple`),t.getConfig(`allowScroll`)||document.body.classList.add(`driver-no-scroll`),document.body.style.setProperty(`--driver-animation-duration`,`${t.getConfig(`duration`)||400}ms`),ne(t),t.listen(`overlayClick`,r),t.listen(`activeElementClick`,s),t.listen(`escapePress`,n),t.listen(`closeClick`,n),t.listen(`arrowLeftPress`,c),t.listen(`arrowRightPress`,l))}function d(){let e=t.getState(`__pendingWaitCancel`);e&&(t.setState(`__pendingWaitCancel`,void 0),e())}function f(e,n,r){let i=()=>{a.disconnect(),window.clearTimeout(o),t.setState(`__pendingWaitCancel`,void 0),r()},a=new MutationObserver(()=>{p(e.element)&&i()}),o=window.setTimeout(i,n);t.setState(`__pendingWaitCancel`,()=>{a.disconnect(),window.clearTimeout(o)}),a.observe(document.documentElement,{childList:!0,subtree:!0,attributes:!0})}function m(e=0,n=!1){d();let r=t.getConfig(`steps`);if(!r){console.error(`No steps to drive through`),h();return}if(!r[e]){h();return}let i=r[e],a=i.waitForElement??t.getConfig(`waitForElement`)??0;if(!n&&a>0&&i.element&&!p(i.element)){f(i,a,()=>m(e,!0));return}if(F(t,i)){let n=t.getState(`activeIndex`),i=typeof n==`number`&&e<n?-1:1;r[e+i]?m(e+i):i===1&&h();return}t.setState(`__activeOnDestroyed`,document.activeElement),t.setState(`activeIndex`,e);let o=r[e+1];K(t,B(t,e,{onNextClick:()=>{o?m(e+1):h()},onPrevClick:()=>{m(e-1)},onCloseClick:()=>{h()}}))}function h(e=!0){let n=t.getState(`__activeElement`),r=t.getState(`__activeStep`),i=t.getState(`__activeOnDestroyed`),a=t.getConfig(`onDestroyStarted`);if(e&&a){a(!n||n?.id===`driver-dummy-element`?void 0:n,r,t.getHookOpts());return}let o=r?.onDeselected||t.getConfig(`onDeselected`),s=t.getConfig(`onDestroyed`);document.body.classList.remove(`driver-active`,`driver-fade`,`driver-simple`,`driver-no-scroll`),document.body.style.removeProperty(`--driver-animation-duration`),d(),$(t),w(t.getState(`popover`)),Y(),N(t),t.resetEmitter();let c=t.getState();if(t.resetState(),n&&r){let e=n.id===`driver-dummy-element`;o&&o(e?void 0:n,r,t.getHookOpts(c)),s&&s(e?void 0:n,r,t.getHookOpts(c))}i&&i.focus()}let g={isActive:()=>t.getState(`isInitialized`)||!1,refresh:()=>X(t),drive:(e=0)=>{u(),m(e)},setConfig:t.setConfig,setSteps:e=>{d(),t.resetState(),t.setConfig({...t.getConfig(),steps:e})},getConfig:t.getConfig,getState:t.getState,getActiveIndex:()=>t.getState(`activeIndex`),isFirstStep:()=>{let e=t.getState(`activeIndex`);return e!==void 0&&I(t,e-1,-1)===void 0},isLastStep:()=>{let e=t.getState(`activeIndex`);return e!==void 0&&I(t,e+1,1)===void 0},getActiveStep:()=>t.getState(`activeStep`),getActiveElement:()=>t.getState(`activeElement`),getPreviousElement:()=>t.getState(`previousElement`),getPreviousStep:()=>t.getState(`previousStep`),getNextStep:()=>{let e=t.getConfig(`steps`)||[],n=t.getState(`activeIndex`);if(n===void 0)return;let r=I(t,n+1,1);return r===void 0?void 0:e[r]},moveNext:i,movePrevious:a,moveTo:o,hasNextStep:()=>{let e=t.getState(`activeIndex`);return e!==void 0&&I(t,e+1,1)!==void 0},hasPreviousStep:()=>{let e=t.getState(`activeIndex`);return e!==void 0&&I(t,e-1,-1)!==void 0},highlight:e=>{u(),K(t,{...e,popover:e.popover?{showButtons:[],showProgress:!1,progressText:``,...e.popover}:void 0})},destroy:()=>{h(!1)}};return t.setDriver(g),g}return e.driver=se,e})({});</script>
+<script>
+// ============================================================
+// 🔰チュートリアル共通エンジン（正本はこのファイル1つ）
+// ------------------------------------------------------------
+// 進捗ドット・「あと◯つ」・完了/もっとやる・localStorage・🔰トグル・
+// 見た目(CSS)・パネルDOM を全部ここが持つ。加速度・音響SW など各ページは
+// createTutorial({...}) を1回呼び、ステップ定義と入力の与え方だけ書く。
+//
+// 入力の与え方（どちらでも可・併用可）:
+//   tut.tick(e)          … 動き駆動（毎フレーム呼ぶ。加速度の devicemotion）
+//   tut.event(name, data)… イベント駆動（音響SWの armed/measuring/done）
+//
+// ステップ定義（factory は api を受け取り、ステップ実体を返す）:
+//   (api) => ({
+//     html: () => '文言',
+//     tick?: (e)=>bool,          // 動き駆動でクリア判定（true でクリア）
+//     needsActive?: true,        // 計測中(cfg.isActive)のときだけ tick する
+//     on?: 'done', check?, fail?,// イベント駆動。check偽なら api.note(fail(data))
+//     observe?: true,            // 「見えた！つぎへ」ボタンで進むステップ
+//     guess?: true, onGuess?:(g)=>void,  // 予想ボタン（cfg.guessOptions 必須）
+//   })
+//   api = { note(t), markGuess(g), setQuestion(t), isActive() }
+// ============================================================
+(function () {
+  const CSS = `
+  .missions { max-width: 760px; margin: 0 auto 10px; background:#22261c; border:1px solid #4a5334; border-radius:6px; padding:10px 14px; font-size:0.95rem; text-align:left; }
+  .m-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .m-head .m-title { color:#a8c26a; font-weight:bold; }
+  .m-dots { letter-spacing:3px; font-size:0.9rem; color:#4a5334; }
+  .m-dots .on { color:#ffe000; } .m-dots .now { color:#a8c26a; } .m-dots .m-remain { color:#a8c26a; font-size:0.8rem; }
+  .m-body { color:#eee; padding:4px 0; min-height:1.5rem; }
+  .m-body.cleared { animation:m-flash 0.9s; }
+  @keyframes m-flash { 0%{background:#4a5334;} 100%{background:transparent;} }
+  .m-guess { margin-top:8px; }
+  .m-guess button { background:#333; color:#eee; border:1px solid #555; border-radius:6px; padding:5px 16px; margin:0 3px; cursor:pointer; font-size:0.95rem; }
+  .m-guess button.picked { background:#ffe000; color:#1a1a1a; border-color:#ffe000; }
+  .m-next { background:#ffe000; color:#1a1a1a; border:none; border-radius:6px; padding:6px 18px; margin-top:8px; cursor:pointer; font-size:0.95rem; }
+  .m-note { color:#e8a56a; margin-top:6px; font-size:0.85rem; min-height:1rem; }
+  .m-done-btns { text-align:right; margin-top:8px; }
+  .m-done-btns button { background:#333; color:#eee; border:1px solid #555; border-radius:6px; padding:6px 18px; margin-left:8px; cursor:pointer; font-size:0.95rem; }
+  .m-done-btns button.m-more { background:#ffe000; color:#1a1a1a; border-color:#ffe000; }
+  .tut-pulse { animation:m-pulse 1.1s ease-in-out 4; }
+  @keyframes m-pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.35);} }
+  /* 完了バッジ：アイコンの右下隅に小さく重ねる（下に折り返して巨大表示されるのを防ぐ） */
+  .tut-done-badge { position:absolute; right:3px; bottom:4px; pointer-events:none; display:block; }
+  .tut-ico { vertical-align:-3px; }
+  `;
+  // 完了バッジはヘッダーのSVGアイコン群と揃えたフラットなSVG（緑丸＋白チェック）
+  const DONE_BADGE_SVG =
+    '<svg class="tut-done-badge" viewBox="0 0 16 16" width="12" height="12" aria-label="完了">' +
+    '<circle cx="8" cy="8" r="8" fill="#2fae4a"/>' +
+    '<path d="M4.4 8.4l2.4 2.4 4.8-5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+
+  // チュートリアル文中で使う小さなフラットSVGアイコン（絵文字の代わり）。
+  // ページ側のステップ文・completeText からも window.TUT_ICONS で使える。
+  const ico = (path) =>
+    '<svg class="tut-ico" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">' + path + '</svg>';
+  window.TUT_ICONS = {
+    play: ico('<path d="M8 5v14l11-7z"/>'),
+    pause: ico('<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>'),
+    trash: ico('<path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>'),
+    cap: ico('<path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>'),
+    phone: ico('<path d="M17 1H7c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V5h10v14z"/>'),
+    repeat: ico('<path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>'),
+    mic: ico('<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>'),
+    timer: ico('<path d="M15 1H9v2h6V1zm-2 13h-2V8h2v6zm6.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>'),
+    check:
+      '<svg class="tut-ico" viewBox="0 0 16 16" width="16" height="16">' +
+      '<circle cx="8" cy="8" r="8" fill="#2fae4a"/>' +
+      '<path d="M4.4 8.4l2.4 2.4 4.8-5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>',
+  };
+  const PANEL =
+    '<div class="missions" hidden>' +
+    '<div class="m-head"><span class="m-title">' + window.TUT_ICONS.cap + ' チュートリアル</span><span class="m-dots"></span></div>' +
+    '<div class="m-body"></div>' +
+    '<div class="m-guess" hidden></div>' +
+    '<button class="m-next" hidden>見えた！つぎへ</button>' +
+    '<div class="m-note"></div>' +
+    '<div class="m-done-btns" hidden>' +
+    '<button class="m-restart">最初から</button>' +
+    '<button class="m-more">もっとやる</button>' +
+    '<button class="m-close">閉じる</button>' +
+    '</div></div>';
+
+  window.createTutorial = function (cfg) {
+    // cfg: { keyPrefix, mountId, toggleBtnId, steps[], moreSteps[]?, completeText?,
+    //        guessOptions?, isActive?, inactiveNote? }
+    if (!document.getElementById('tutorial-css')) {
+      const st = document.createElement('style');
+      st.id = 'tutorial-css'; st.textContent = CSS;
+      document.head.appendChild(st);
+    }
+    const mount = document.getElementById(cfg.mountId);
+    mount.innerHTML = PANEL;
+    const panel = mount.querySelector('.missions');
+    const mDots = panel.querySelector('.m-dots');
+    const mBody = panel.querySelector('.m-body');
+    const mGuess = panel.querySelector('.m-guess');
+    const mNext = panel.querySelector('.m-next');
+    const mNote = panel.querySelector('.m-note');
+    const mDoneBtns = panel.querySelector('.m-done-btns');
+    const mRestart = panel.querySelector('.m-restart');
+    const mMore = panel.querySelector('.m-more');
+    const mClose = panel.querySelector('.m-close');
+    const toggleBtn = document.getElementById(cfg.toggleBtnId);
+
+    const M_KEY = cfg.keyPrefix + '-step';
+    const SEEN_KEY = cfg.keyPrefix + '-seen';
+    // ボタンの中身（絵文字でもSVGアイコンでも）を保存して、完了時は✅を添えるだけにする。
+    // innerHTML を '🔰' 固定で上書きすると、ページ側がSVGアイコンにしたとき壊れるため。
+    const baseIcon = toggleBtn.innerHTML;
+    const hasMore = cfg.moreSteps && cfg.moreSteps.length > 0;
+    const rand = (a) => a[Math.floor(Math.random() * a.length)];
+
+    if (cfg.guessOptions) {
+      mGuess.innerHTML = '予想：' +
+        cfg.guessOptions.map(g => '<button data-g="' + g + '">' + g + '</button>').join('');
+    }
+    function markGuess(picked) {
+      mGuess.querySelectorAll('button').forEach(b => b.classList.toggle('picked', b.dataset.g === picked));
+    }
+
+    // ステップに渡す小さなAPI（DOMを直接触らせない）
+    const api = {
+      note: (t) => { mNote.innerHTML = t; },   // ステップ文と同様にSVGアイコンを混ぜられるようinnerHTML
+      markGuess,
+      setQuestion: (t) => { mBody.innerHTML = prefix() + t; },
+      isActive: () => (cfg.isActive ? cfg.isActive() : true),
+    };
+
+    let mode = 'tutorial';
+    let current = null;
+    let stepIndex = 0;
+    try { stepIndex = Math.max(0, Math.min(cfg.steps.length, parseInt(localStorage.getItem(M_KEY) || '0', 10))); } catch (e) {}
+    function save() { try { localStorage.setItem(M_KEY, String(stepIndex)); } catch (e) {} }
+    function prefix() { return mode === 'tutorial' ? '(' + (stepIndex + 1) + ') ' : window.TUT_ICONS.repeat + ' '; }
+
+    function renderDots() {
+      if (mode !== 'tutorial') { mDots.innerHTML = ''; return; }
+      let s = '';
+      for (let i = 0; i < cfg.steps.length; i++) {
+        const cls = i < stepIndex ? 'on' : (i === stepIndex ? 'now' : '');
+        s += '<span class="' + cls + '">●</span>';
+      }
+      const remain = cfg.steps.length - stepIndex;
+      mDots.innerHTML = s + (remain > 0 ? ' <span class="m-remain">あと' + remain + 'つ</span>' : '');
+    }
+
+    function showComplete() {
+      current = null; renderDots();
+      mBody.innerHTML = cfg.completeText || (window.TUT_ICONS.check + ' チュートリアル完了！');
+      mNote.textContent = ''; mGuess.hidden = true; mNext.hidden = true;
+      mDoneBtns.hidden = false; mRestart.hidden = false; mClose.hidden = false; mMore.hidden = !hasMore;
+      toggleBtn.style.position = 'relative';
+      toggleBtn.innerHTML = baseIcon + DONE_BADGE_SVG;
+    }
+
+    function load() {
+      mNote.textContent = ''; markGuess(null);
+      mNext.hidden = true; mDoneBtns.hidden = true; mGuess.hidden = true;
+      if (mode === 'tutorial') {
+        renderDots();
+        if (stepIndex >= cfg.steps.length) { showComplete(); return; }
+        current = cfg.steps[stepIndex](api);
+        toggleBtn.innerHTML = baseIcon;
+      } else {
+        mDots.innerHTML = '';
+        current = rand(cfg.moreSteps)(api);
+        mDoneBtns.hidden = false; mRestart.hidden = false; mClose.hidden = false; mMore.hidden = true;
+      }
+      mBody.innerHTML = prefix() + current.html();
+      if (current.guess) mGuess.hidden = false;
+      if (current.observe) mNext.hidden = false;
+    }
+
+    function clear() {
+      mBody.classList.remove('cleared'); void mBody.offsetWidth; mBody.classList.add('cleared');
+      current = null;
+      if (mode === 'tutorial') { stepIndex++; save(); }
+      setTimeout(load, 900);
+    }
+
+    // 入力: 動き駆動
+    function tick(e) {
+      if (!current || !current.tick) return;
+      if (current.needsActive && !api.isActive()) {
+        if (cfg.inactiveNote) mNote.textContent = cfg.inactiveNote;
+        return;
+      }
+      if (current.tick(e)) clear();
+    }
+    // 入力: イベント駆動
+    function event(name, data) {
+      if (!current || current.observe || !current.on || current.on !== name) return;
+      if (current.check && !current.check(data)) { mNote.textContent = current.fail ? current.fail(data) : 'もう一度'; return; }
+      if (current.check) mNote.textContent = 'ぴったり！✅';
+      clear();
+    }
+
+    mGuess.addEventListener('click', (ev) => {
+      const b = ev.target.closest('button'); if (!b) return;
+      markGuess(b.dataset.g);
+      if (current && current.onGuess) current.onGuess(b.dataset.g);
+    });
+    mNext.addEventListener('click', () => { if (current && current.observe) clear(); });
+    toggleBtn.addEventListener('click', () => {
+      toggleBtn.classList.remove('tut-pulse');
+      panel.hidden = !panel.hidden;
+      try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {}
+    });
+    mRestart.addEventListener('click', () => { mode = 'tutorial'; stepIndex = 0; save(); load(); });
+    mMore.addEventListener('click', () => { mode = 'more'; load(); });
+    mClose.addEventListener('click', () => { panel.hidden = true; });
+
+    load();
+    let seen = false; try { seen = !!localStorage.getItem(SEEN_KEY); } catch (e) {}
+    if (!seen) toggleBtn.classList.add('tut-pulse');
+
+    return { tick, event };
+  };
+})();
+</script>
+<script>
+// オンボーディングツアーの共通エンジン（driver.js 利用）。
+// ページ側は createOnboardingTour({ key, steps, prepare?, cleanup? }) を呼ぶだけ。
+// 初回訪問時だけ自動で始まり、完了・スキップで localStorage に記録して以後は出さない。
+// UIの場所案内だけを担当し、「体験」は🔰チュートリアル（tutorial.js）の役割。
+// 正本はこのファイル。driver.js / driver.css は vendor（無改変）。
+(function () {
+  // phyphox風テーマ（黒地＋黄色）。vendor の driver.css は触らず、ここで上書きする。
+  const style = document.createElement('style');
+  style.textContent =
+    '.driver-popover { background: #222; color: #eee; border: 1px solid #444; }' +
+    // 注意：driver.jsのタイトルは<header>要素。ページ側の header{} スタイル
+    // （黄色背景・高さ52px・sticky）が当たってしまうため、ここで全て打ち消す。
+    '.driver-popover-title { background: none; color: #ffe000; font-size: 1rem;' +
+    '  height: auto; padding: 0; position: static; display: block; z-index: auto;' +
+    '  margin: 0 0 4px; text-align: left; }' +
+    '.driver-popover-description { color: #ccc; font-size: 0.9rem; }' +
+    '.driver-popover-progress-text { color: #999; }' +
+    '.driver-popover-close-btn { color: #999; }' +
+    '.driver-popover-footer button.driver-popover-footer-btn {' +
+    '  background: #ffe000; color: #1a1a1a; border: none; border-radius: 4px;' +
+    '  padding: 4px 10px; font-weight: bold; text-shadow: none; }' +
+    '.driver-popover-footer button.driver-popover-btn-disabled { background: #444; color: #888; }' +
+    '.driver-popover-arrow-side-top { border-top-color: #222; }' +
+    '.driver-popover-arrow-side-bottom { border-bottom-color: #222; }' +
+    '.driver-popover-arrow-side-left { border-left-color: #222; }' +
+    '.driver-popover-arrow-side-right { border-right-color: #222; }';
+  document.head.appendChild(style);
+
+  // cfg: {
+  //   key:     localStorage の既読キー（ページごとに変える）
+  //   steps:   driver.js のステップ配列（説明は各20文字以内が目安）
+  //   prepare: ツアー開始直前の準備（アンカー要素の設置など。省略可）
+  //   cleanup: ツアー終了時の後片付け（アンカー撤去など。省略可)
+  // }
+  window.createOnboardingTour = function (cfg) {
+    function start() {
+      if (cfg.prepare) cfg.prepare();
+      const d = window.driver.js.driver({
+        showProgress: true,
+        progressText: '{{current}} / {{total}}',
+        nextBtnText: '次へ',
+        prevBtnText: '戻る',
+        doneBtnText: 'おわり',
+        overlayOpacity: 0.7,
+        stagePadding: 6,
+        onDestroyed: () => {
+          if (cfg.cleanup) cfg.cleanup();
+          try { localStorage.setItem(cfg.key, '1'); } catch (e) {}
+        },
+        steps: cfg.steps,
+      });
+      d.drive();
+    }
+
+    // 初回訪問のときだけ、レイアウト確定後に自動で開始する
+    let seen = false;
+    try { seen = !!localStorage.getItem(cfg.key); } catch (e) {}
+    if (!seen) {
+      if (document.readyState === 'complete') setTimeout(start, 500);
+      else window.addEventListener('load', () => setTimeout(start, 500));
+    }
+    return { start };
+  };
+})();
+</script>
 <script>
 // 系列定義：変位X/Y/Z（m）、速度X/Y/Z（m/s）、加速度X/Y/Z（m/s²）
 const SERIES = {

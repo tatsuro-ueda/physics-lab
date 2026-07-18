@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>位置（GPS） | タブレット物理実験ラボ</title>
+<link rel="stylesheet" href="driver.css">
 <style>
-  :root { --phx-orange: #ffe000; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
+  :root { --phx-orange: #ffe000; --ax-x: #4C8DF0; --ax-y: #4FC96B; --ax-z: #F2C744; }
+  /* 既存CSSは残しつつ、このTaskでは共有アセット導線だけ通す */
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -107,6 +109,7 @@
   <div class="title">位置（GPS）</div>
   <button id="playBtn" title="計測開始"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="計測開始"><path d="M8 5v14l11-7z"/></svg></button>
   <button id="resetBtn" title="計測を止めてデータを消す"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="削除"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+  <button id="missionBtn" title="チュートリアル（位置の見方を体験で学ぶ）"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-label="チュートリアル"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg></button>
 </header>
 
 <div class="tabs">
@@ -116,6 +119,7 @@
 </div>
 
 <main>
+  <div id="tutorialMount"></div>
   <!-- 位置タブの数値カード -->
   <div class="values visible" id="values-pos">
     <div class="vcard"><div class="label">緯度</div><div class="num" id="lat">--</div></div>
@@ -197,6 +201,9 @@
   </p>
 </main>
 
+<script src="driver.js"></script>
+<script src="tutorial.js"></script>
+<script src="tour.js"></script>
 <script>
 // 系列定義：変位X/Y/Z（m）、速度X/Y/Z（m/s）、加速度X/Y/Z（m/s²）
 const SERIES = {

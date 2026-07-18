@@ -511,6 +511,7 @@ const SERIES = {
 };
 const KEYS = Object.keys(SERIES);
 const HIT_PX = 30;
+const TUTORIAL_MOVE_METERS = 5;
 const marker = {};
 KEYS.forEach(k => marker[k] = null);
 
@@ -528,6 +529,44 @@ let lastPos = null;
 let totalDist = 0;
 let lat0 = null, lon0 = null, alt0 = null;
 let lastZ = 0;   // 高度が取れない端末では0のまま
+
+function isRunning() {
+  return watchId !== null;
+}
+
+const tut = createTutorial({
+  keyPrefix: 'phylab-location',
+  mountId: 'tutorialMount',
+  toggleBtnId: 'missionBtn',
+  isActive: isRunning,
+  inactiveNote: '▶を押すと進められるよ',
+  steps: [
+    () => ({
+      html: () => window.TUT_ICONS.play + ' を押して記録を始めよう',
+      on: 'started',
+    }),
+    () => ({
+      html: () => '少し歩いて、線や地図が動くのを見よう',
+      needsActive: true,
+      tick: (state) => state.totalDist >= TUTORIAL_MOVE_METERS || state.trackLength >= 3,
+    }),
+    () => ({
+      html: () => '地図で、どちらへ動いたか見てみよう',
+      observe: true,
+    }),
+  ],
+  moreSteps: [
+    () => ({
+      html: () => 'グラフをタップして拡大してみよう',
+      on: 'zoomed',
+    }),
+    () => ({
+      html: () => '線をタップして値を読んでみよう',
+      on: 'marker',
+    }),
+  ],
+  completeText: window.TUT_ICONS.check + ' チュートリアル完了！位置の見方をつかめたね',
+});
 
 // ---- タブ切り替え ----
 document.querySelectorAll('.tab').forEach(tab => {
@@ -582,9 +621,10 @@ KEYS.forEach(key => {
       min -= pad; max += pad;
       const i = nearestIndex(s.t, cx / cvEl.width * spanOf(s.t));
       const ly = cvEl.height - ((s.v[i] - min) / (max - min)) * cvEl.height;
-      if (Math.abs(cy - ly) < HIT_PX) { marker[key] = i; return; }   // 線の上→値
+      if (Math.abs(cy - ly) < HIT_PX) { marker[key] = i; tut.event('marker'); return; }   // 線の上→値
     }
     toggleZoom(card);                                                // 線の外→拡大/縮小
+    if (document.body.classList.contains('zoom')) tut.event('zoomed');
   });
 });
 
@@ -610,6 +650,7 @@ playBtn.addEventListener('click', () => {
   KEYS.forEach(k => { const t = SERIES[k].t; if (t.length) lastT = Math.max(lastT, t[t.length - 1]); });
   if (lastT) t0 = performance.now() / 1000 - lastT;
   KEYS.forEach(k => marker[k] = null);   // 再開時はタップ値の表示を消す
+  tut.event('started');
   playBtn.innerHTML = PAUSE_SVG;
   errEl.textContent = '';
   draw();
@@ -681,6 +722,8 @@ function onPos(pos) {
   } else {
     lastPos = c;
   }
+
+  tut.tick({ totalDist, trackLength: track.length });
 }
 
 function pushS(key, t, v) {
@@ -880,6 +923,25 @@ function drawGraph(cv, s, mIdx) {
     ctx.fillText(label, lx, ly);
   }
 }
+</script>
+<script>
+createOnboardingTour({
+  key: 'location-onboarding-seen',
+  steps: [
+    {
+      element: '#card-map',
+      popover: { title: '移動のようす', description: 'ここで動きを見るよ', side: 'bottom', align: 'center' },
+    },
+    {
+      element: '#playBtn',
+      popover: { title: '開始ボタン', description: '押すと記録が始まるよ', side: 'bottom' },
+    },
+    {
+      element: '#missionBtn',
+      popover: { title: 'チュートリアル', description: '押して使い方を体験してみてね', side: 'bottom' },
+    },
+  ],
+});
 </script>
 <script>
 // ============================================================

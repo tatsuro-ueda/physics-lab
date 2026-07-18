@@ -17,6 +17,19 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertIn('<script src="tutorial.js"></script>', source)
         self.assertIn('<script src="tour.js"></script>', source)
 
+    def test_location_page_defines_tutorial_and_onboarding(self):
+        source = LOCATION_SOURCE.read_text(encoding="utf-8")
+
+        self.assertIn("createTutorial({", source)
+        self.assertIn("keyPrefix: 'phylab-location'", source)
+        self.assertIn("mountId: 'tutorialMount'", source)
+        self.assertIn("toggleBtnId: 'missionBtn'", source)
+        self.assertIn("createOnboardingTour({", source)
+        self.assertIn("key: 'location-onboarding-seen'", source)
+        self.assertIn("tut.event('started')", source)
+        self.assertIn("tut.event('zoomed')", source)
+        self.assertIn("tut.event('marker')", source)
+
     def test_generated_location_page_has_learning_hooks(self):
         generated = LOCATION_BUILD.read_text(encoding="utf-8")
 

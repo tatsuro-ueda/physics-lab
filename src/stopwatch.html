@@ -264,18 +264,22 @@ function micHint() {
   const ua = navigator.userAgent;
   const isIOS = /iPad|iPhone|iPod/.test(ua) ||
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if (isIOS) return '（「マイクの使用を求めています」と出たら「許可」して下さい）';
-  if (/Android/.test(ua)) return '（マイクを使ってもいい？と聞かれたら「許可」して下さい）';
-  return '（マイクを使ってもいい？と聞かれたら「許可」して下さい）';
+  if (isIOS) return '（もし「マイクへのアクセスを求めています」と出たら「許可」して下さい）';
+  if (/Android/.test(ua)) return '（もしマイクを使ってもいい？と聞かれたら「許可」して下さい）';
+  return '（もしマイクを使ってもいい？と聞かれたら「許可」して下さい）';
 }
 
 const STEPS = [
-  () => ({ html: () => '「開始」を押して、音を待とう' + micHint(), on: 'armed' }),
+  () => ({ html: () => '「開始」を押す<br><br>' + micHint(), on: 'armed' }),
   () => ({ html: () => '手をパンとたたいて、タイマーをスタート', on: 'measuring' }),
   () => ({ html: () => 'タイマーが動いているのを見てみよう', observe: true }),
   () => ({ html: () => 'もう一度たたいて、タイマーを止めよう', on: 'done' }),
   () => ({ html: () => 'タイマーが止まったのを見てみよう', observe: true }),
-  () => rangeStep(5, 8),
+  // 最後は「6〜8秒で止める」を3ステップに分けて誘導（開始→拍手→良いタイミングで拍手）
+  () => ({ html: () => '6〜8秒のあいだで止めてみよう。「開始」ボタンを押す', on: 'armed' }),
+  () => ({ html: () => '6〜8秒のあいだで止めてみよう。拍手する', on: 'measuring' }),
+  () => ({ html: () => '6〜8秒のあいだで止めてみよう。良いタイミングでもういちど拍手する',
+           on: 'done', check: (el) => el >= 6 && el <= 8, fail: (el) => (el < 6 ? 'もう少し長く' : 'もう少し短く') }),
 ];
 const MORE = [ () => { const r = rand(RANGE_POOL); return rangeStep(r[0], r[1]); } ];
 

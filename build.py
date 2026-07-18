@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
 """単一HTML生成ビルド。
 
-src/ の各HTMLにある <script src="lab-common.js"></script> を
-src/lab-common.js の実体に置き換え、リポジトリ直下へ配布用の
-単一HTMLファイルを生成する。依存はPython標準ライブラリのみ。
-
-使い方:  python3 build.py
+src/ の各HTMLにある <script src="X.js"></script> のうち、src/X.js が
+存在するものを実体に置き換え、リポジトリ直下へ配布用の単一HTMLを生成する。
+（lab-common.js・tutorial.js など複数の共有JSに対応。存在しない外部srcは触らない。）
+依存はPython標準ライブラリのみ。使い方:  python3 build.py
 """
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-TAG = '<script src="lab-common.js"></script>'
+TAG_RE = re.compile(r'<script src="([^"]+\.js)"></script>')
 
-common = (ROOT / 'src' / 'lab-common.js').read_text(encoding='utf-8')
+
+def inline(html):
+    def repl(m):
+        p = ROOT / 'src' / m.group(1)
+        if p.exists():
+            return '<script>\n' + p.read_text(encoding='utf-8') + '</script>'
+        return m.group(0)   # src/ に無い外部srcはそのまま残す
+    return TAG_RE.sub(repl, html)
+
 
 for page in sorted((ROOT / 'src').glob('*.html')):
-    html = page.read_text(encoding='utf-8')
-    if TAG not in html:
-        raise SystemExit(f'{page.name}: 置き換えタグ {TAG} が見つかりません')
-    out = html.replace(TAG, '<script>\n' + common + '</script>')
+    out = inline(page.read_text(encoding='utf-8'))
     (ROOT / page.name).write_text(out, encoding='utf-8')
     print(f'{page.name}: 生成OK（{len(out):,} bytes）')

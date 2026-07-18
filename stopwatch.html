@@ -13,7 +13,18 @@
     padding: 16px;
     text-align: center;
   }
-  a.back { color: #8ac; text-decoration: none; float: left; }
+  header {
+    background: #ffe000; color: #1a1a1a;
+    display: flex; align-items: center;
+    height: 52px; padding: 0 8px;
+    position: sticky; top: 0; z-index: 10;
+    margin: -16px -16px 16px;   /* body の padding:16px を打ち消して全幅に */
+    text-align: left;
+  }
+  header a.back { color: #1a1a1a; text-decoration: none; font-size: 1.4rem; padding: 8px 12px; }
+  header .title { font-size: 1.1rem; font-weight: bold; flex: 1; }
+  header a.dl { color: #1a1a1a; text-decoration: none; font-size: 1.3rem; padding: 8px 12px; }
+  header button.hbtn { background: none; border: none; color: #1a1a1a; font-size: 1.5rem; padding: 8px 12px; cursor: pointer; }
   h1 { font-size: 1.3rem; margin: 8px 0 16px; }
   #time {
     font-size: 4rem;
@@ -76,9 +87,12 @@
 </style>
 </head>
 <body>
-<a class="back" href="index.html">← もどる</a>
-<a class="back" href="stopwatch.html" download title="このページのHTMLファイルをダウンロード" style="float: right;">⬇ HTML</a>
-<h1>⏱️ 音響ストップウォッチ</h1>
+<header>
+  <a class="back" href="index.html">←</a>
+  <div class="title">⏱️ 音響ストップウォッチ</div>
+  <a class="dl" href="stopwatch.html" download title="このページのHTMLファイルをダウンロード">⬇</a>
+  <button id="missionBtn" class="hbtn" title="チュートリアル">🔰</button>
+</header>
 
 <div id="time">0.00</div>
 <div id="state">「開始」を押すと、音を待ちます</div>

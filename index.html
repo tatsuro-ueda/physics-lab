@@ -5,131 +5,107 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>タブレット物理実験ラボ</title>
 <style>
-  :root { --phx-orange: #ffe000; }
+  :root { --yellow: #ffe000; }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
-    background: #1a1a1a;
+    background: #141414;
     color: #eee;
     margin: 0;
   }
-  header {
-    background: var(--phx-orange);
-    color: #1a1a1a;
-    display: flex;
-    align-items: center;
-    height: 52px;
-    padding: 0 16px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+  main { max-width: 560px; margin: 0 auto; padding: 8px 16px 40px; }
+  /* ヒーロー（黄色はベタ塗りでなくアクセントに） */
+  .hero { text-align: center; padding: 44px 8px 6px; }
+  .hero h1 { font-size: 1.65rem; margin: 10px 0 0; letter-spacing: 0.02em; }
+  .hero .flask { display: block; margin: 0 auto; }
+  .tagline { text-align: center; color: #c9c9c9; font-size: 0.95rem; margin: 10px 0 26px; }
+  /* 実験カード */
+  a.card {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 20px;
+    margin: 14px 0;
+    text-decoration: none; color: inherit;
+    transition: border-color 0.15s;
   }
-  header .title { font-size: 1.2rem; font-weight: bold; }
-  .tagline { text-align: center; color: #bbb; font-size: 0.9rem; margin: 14px 16px 2px; }
-  main { max-width: 640px; margin: 0 auto; padding: 8px 0 24px; }
-  h2 {
-    font-size: 0.85rem;
-    color: var(--phx-orange);
-    margin: 20px 16px 6px;
-    border-bottom: 1px solid #333;
-    padding-bottom: 4px;
+  a.card:active { border-color: var(--yellow); }
+  .card .name { font-size: 1.2rem; font-weight: bold; }
+  .card .desc { font-size: 0.85rem; color: #999; margin-top: 5px; }
+  .card svg { flex-shrink: 0; }
+  /* 工事中（控えめなピル） */
+  .wip {
+    text-align: center; color: #666; font-size: 0.85rem;
+    background: #1a1a1a; border: 1px dashed #333; border-radius: 999px;
+    padding: 10px; margin: 18px 0 6px;
   }
-  a.item, div.item {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 10px 16px;
-    text-decoration: none;
-    color: inherit;
-  }
-  a.item:active { background: #2a2a2a; }
-  .icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    background: var(--phx-orange);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    flex-shrink: 0;
-  }
-  .item .name { font-size: 1rem; }
-  .item .desc { font-size: 0.78rem; color: #999; }
-  div.item.disabled { opacity: 0.45; }
-  div.item.disabled .icon { background: #555; }
-  .note {
-    margin: 20px 16px;
-    font-size: 0.75rem;
-    color: #789;
-    text-align: center;
-  }
-  .share {
-    margin: 28px 16px 8px;
-    padding: 14px;
-    border-top: 1px solid #333;
-    text-align: center;
-  }
-  .share img.qr { width: 110px; height: 110px; image-rendering: pixelated; border-radius: 6px; }
-  .share .s-url { color: #789; font-size: 0.75rem; margin: 6px 0 10px; }
+  /* 共有欄 */
+  .share { margin-top: 36px; padding-top: 22px; border-top: 1px solid #2a2a2a; text-align: center; }
+  .share img.qr { width: 120px; height: 120px; image-rendering: pixelated; border-radius: 10px; background: #fff; padding: 6px; }
+  .share .s-url { color: #789; font-size: 0.75rem; margin: 8px 0 14px; }
   .share a.mailbtn {
     display: inline-block;
-    background: #ffe000; color: #1a1a1a;
-    border-radius: 8px; padding: 10px 18px;
-    text-decoration: none; font-size: 0.95rem;
+    background: var(--yellow); color: #1a1a1a;
+    border-radius: 999px; padding: 12px 22px;
+    text-decoration: none; font-size: 0.95rem; font-weight: bold;
   }
-  .share .s-print { margin-top: 10px; font-size: 0.75rem; }
+  .share .s-print { margin-top: 12px; font-size: 0.75rem; }
   .share .s-print a { color: #789; }
 </style>
 </head>
 <body>
-<header><div class="title">🔬 タブレット物理実験ラボ</div></header>
-<p class="tagline">インストールできなくても、実験はできる。</p>
-
 <main>
-  <div class="item disabled">
-    <div class="icon">🙋</div>
-    <div><div class="name">回答カウンター</div>
-    <div class="desc">🚧 工事中</div></div>
+  <div class="hero">
+    <svg class="flask" viewBox="0 0 48 48" width="52" height="52" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 6 h10 M21 6 v12 L10 38 a4 4 0 0 0 3.5 6 h21 a4 4 0 0 0 3.5 -6 L27 18 V6" stroke="#ddd" stroke-width="2.5"/>
+      <path d="M15 30 h18" stroke="#ffe000" stroke-width="2.5"/>
+      <circle cx="40" cy="10" r="2" stroke="#ffe000" stroke-width="2"/>
+      <circle cx="9" cy="14" r="1.5" stroke="#ffe000" stroke-width="2"/>
+    </svg>
+    <h1>タブレット物理実験ラボ</h1>
   </div>
-  <a class="item" href="acceleration.html">
-    <div class="icon">📈</div>
+  <p class="tagline">インストールできなくても、実験はできる。</p>
+
+  <a class="card" href="acceleration.html">
     <div><div class="name">加速度</div>
     <div class="desc">ふってみよう！グラフがビヨン</div></div>
+    <svg viewBox="0 0 64 40" width="72" height="45" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="2,26 12,26 18,10 26,34 33,16 40,30 46,22 62,22" stroke="#ffe000" stroke-width="3"/>
+    </svg>
   </a>
-  <a class="item" href="stopwatch.html">
-    <div class="icon">⏱️</div>
+  <a class="card" href="stopwatch.html">
     <div><div class="name">音響ストップウォッチ</div>
     <div class="desc">パン！ではかる、音のストップウォッチ</div></div>
+    <svg viewBox="0 0 64 44" width="72" height="49" fill="none" stroke-linecap="round">
+      <line x1="4" y1="22" x2="4" y2="22" stroke="#888" stroke-width="3"/>
+      <line x1="10" y1="16" x2="10" y2="28" stroke="#888" stroke-width="3"/>
+      <line x1="16" y1="12" x2="16" y2="32" stroke="#ffe000" stroke-width="3"/>
+      <circle cx="34" cy="24" r="14" stroke="#ffe000" stroke-width="3"/>
+      <line x1="34" y1="24" x2="40" y2="17" stroke="#ffe000" stroke-width="3"/>
+      <line x1="34" y1="6" x2="34" y2="10" stroke="#ffe000" stroke-width="3"/>
+      <line x1="52" y1="12" x2="52" y2="32" stroke="#888" stroke-width="3"/>
+      <line x1="58" y1="16" x2="58" y2="28" stroke="#888" stroke-width="3"/>
+    </svg>
   </a>
-  <a class="item" href="location.html">
-    <div class="icon">📍</div>
+  <a class="card" href="location.html">
     <div><div class="name">位置（GPS）</div>
     <div class="desc">電車・バスの中が実験室になる</div></div>
+    <svg viewBox="0 0 64 44" width="72" height="49" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="8,36 24,28 44,36 58,28" stroke="#888" stroke-width="2.5"/>
+      <path d="M34 6 c-6 0 -10 4.5 -10 10 c0 7 10 16 10 16 c0 0 10 -9 10 -16 c0 -5.5 -4 -10 -10 -10 z" stroke="#ffe000" stroke-width="3"/>
+      <circle cx="34" cy="16" r="3.5" stroke="#ffe000" stroke-width="3"/>
+    </svg>
   </a>
+
   <!-- 非表示中（ページ自体は残してある。URLを直接開けば使える）
-  <a class="item" href="gyroscope.html">
-    <div class="icon">🌀</div>
-    <div><div class="name">ジャイロスコープ</div>
-    <div class="desc">回転の速さ（°/s）をX/Y/Z軸で記録</div></div>
-  </a>
-  <a class="item" href="magnetometer.html">
-    <div class="icon">🧲</div>
-    <div><div class="name">磁気センサー（3軸）</div>
-    <div class="desc">磁場の強さ（µT）をX/Y/Z軸で記録 ※非対応の端末はコンパスへ</div></div>
-  </a>
-  <a class="item" href="compass.html">
-    <div class="icon">🧭</div>
-    <div><div class="name">コンパス</div>
-    <div class="desc">方位を表示。磁石を近づける実験も</div></div>
-  </a>
-  <a class="item" href="sound.html">
-    <div class="icon">🎵</div>
-    <div><div class="name">音のスペクトル</div>
-    <div class="desc">マイクで音をひろって周波数ごとの強さを表示</div></div>
-  </a>
+  <a class="card" href="gyroscope.html">ジャイロスコープ</a>
+  <a class="card" href="magnetometer.html">磁気センサー（3軸）</a>
+  <a class="card" href="compass.html">コンパス</a>
+  <a class="card" href="sound.html">音のスペクトル</a>
   -->
 
+  <div class="wip">回答カウンター　🚧 工事中</div>
 
   <div class="share">
     <img class="qr" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAbwAAAG8AQAAAACNyy1yAAAC/klEQVR4nO1cba7cIAw0Uf+TG7z73w5O4MqYDydpnO1rHVXqjJ7ygDVaaRh5jXFITN9C3b43jwgTHYAcByDHAcj558hJE/v6IKU0n1TTxQzr6ADkhJGTWSHtmqiKGrlIWwZbV/RpzbAcHqDVCHJ+6D/xm7n0duY0nlR3ykx157MZlsMByAnU6oIoM3FNTMRdqNK+AMvhAOS8otUqwWjK3J9158za/UvfuGHiPUDOs1anFq0suSYSoRZ1s9YMrLqA5MLIqX1/r0O6k0o7pa+uzfTFsrc6mGE5HICcqBiATV/C1DHCLSegCauTGZbDBbQaQQ5JDiozl5akGgHA7HJrSKJqNhQFy+EA5IRplZoyjUQ1lUojoTpyql2rTcNYDgcgJ9CvkqI1lkqLcbCtqzKGVp8ArYbFqzVJhr8l/E1CoGic2jJXkgeQ04GWev2zb9ww8R4g5wO/qj/647y1R6oG/aM5iBjAAyQXFQMIxgZqRQLlUAAwQ1Y1gFZdQKuReyvmU7BKzYtO3fbN1zCGVl1Aq4FapWOearlWWpmBoVJo9RHQatzeamdbYaU7rCxK5bpLV89Y225rhAJYDgcgJz5e5d44pFjL8VwAfvUZ0GpsvMqnA6x8/Js22Fs9A1oN86vlcgpgZLlyAjhj/RTbx5YnYOJn5OReTNXfrtr7MPMYv5v4e9gw8R4gx8MMU+02/2CRV/7KxK5g1QHIic1Z0anIilYQO0NWU5eF5XAAcgLjVb5u+XlVsBwKsbofxnI4ADmR9asN0s+/kigv39sBrXqAViPzqwMzrUqmDnCNr5wAlsMByAmOV8kkpq6FK8eQFVp1Aa2+ce9K0itW9IVBTVWZPZda4o6gJ0Crwe8FZPNDP8OAeeRq7OFXnwCtvnGXRZo1KrXfvjJrV+RNgVW+guVwAHJe8avlUrvSYF8cwN7qCdBqoF9lM5Tk3aukh6oyXne52MqYwa8+AVp9Iw9AtuhaMU5dZ86qDWI5HICcCHIS7mC/ByTnAOQ4ADkO/gdyfgJQffDP+aZO+wAAAABJRU5ErkJggg==" alt="このページのQRコード">

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>位置（GPS） | スマホ物理実験ラボ</title>
 <style>
-  :root { --phx-orange: #ffe000; }
+  :root { --phx-orange: #ffe000; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -26,11 +26,29 @@
   }
   header a.back { color: #1a1a1a; text-decoration: none; font-size: 1.4rem; padding: 8px 12px; }
   header .title { font-size: 1.1rem; font-weight: bold; flex: 1; }
-  header a.dl { color: #1a1a1a; text-decoration: none; font-size: 1.3rem; padding: 8px 12px; }
   header button {
     background: none; border: none; color: #1a1a1a;
     font-size: 1.5rem; padding: 8px 12px; cursor: pointer;
   }
+  header a.dl { color: #1a1a1a; text-decoration: none; font-size: 1.3rem; padding: 8px 12px; }
+  /* タブ（phyphox風） */
+  .tabs {
+    display: flex;
+    background: #222;
+    position: sticky;
+    top: 52px;
+    z-index: 9;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    color: #999;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    font-size: 0.95rem;
+  }
+  .tab.active { color: var(--phx-orange); border-bottom-color: var(--phx-orange); }
   main { max-width: 760px; margin: 0 auto; padding: 8px; }
   .values {
     display: grid;
@@ -42,30 +60,39 @@
     background: #2b2b2b;
     border: 1px solid #333;
     border-radius: 4px;
-    padding: 10px;
+    padding: 8px;
     text-align: center;
   }
-  .vcard .label { font-size: 0.8rem; color: #aaa; }
+  .vcard .label { font-size: 0.75rem; color: #aaa; }
   .vcard .num {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-variant-numeric: tabular-nums;
     color: var(--phx-orange);
   }
-  .vcard .num small { font-size: 0.8rem; color: #888; }
+  .vcard .num small { font-size: 0.75rem; color: #888; }
   .card {
     margin-bottom: 10px;
     border: 1px solid #333;
     border-radius: 4px;
     overflow: hidden;
+    cursor: pointer;
+    display: none;
   }
+  .card.visible { display: block; }
   .card .head {
     background: #2b2b2b;
+    text-align: center;
+    font-size: 0.9rem;
     display: flex;
     justify-content: space-between;
     padding: 5px 10px;
-    font-size: 0.9rem;
   }
+  .card .val { font-variant-numeric: tabular-nums; color: #bbb; }
   .card canvas { display: block; width: 100%; height: 150px; background: #000; }
+  body.zoom .card { display: none; }
+  body.zoom .card.zoomed { display: block; }
+  body.zoom .card.zoomed canvas { height: 60vh; }
+  body.zoom .card.zoomed .head { font-size: 1.1rem; }
   .hint { text-align: center; color: #888; font-size: 0.8rem; margin: 12px 0; }
   #err { color: #f88; text-align: center; }
 </style>
@@ -79,45 +106,100 @@
   <a class="dl" href="location.html" download title="このページのHTMLファイルをダウンロード">⬇</a>
 </header>
 
+<div class="tabs">
+  <div class="tab active" data-tab="pos">位置</div>
+  <div class="tab" data-tab="spd">速度</div>
+  <div class="tab" data-tab="acc">加速度</div>
+</div>
+
 <main>
-  <div class="values">
+  <div class="values" id="valuesRow">
     <div class="vcard"><div class="label">緯度</div><div class="num" id="lat">--</div></div>
     <div class="vcard"><div class="label">経度</div><div class="num" id="lon">--</div></div>
-    <div class="vcard"><div class="label">高度</div><div class="num" id="alt">-- <small>m</small></div></div>
-    <div class="vcard"><div class="label">速度</div><div class="num" id="spd">-- <small>m/s</small></div></div>
-    <div class="vcard"><div class="label">水平精度（誤差の目安）</div><div class="num" id="acc">-- <small>m</small></div></div>
+    <div class="vcard"><div class="label">水平精度（誤差の目安）</div><div class="num" id="accu">-- <small>m</small></div></div>
     <div class="vcard"><div class="label">移動きょり（合計）</div><div class="num" id="dist">0 <small>m</small></div></div>
   </div>
 
-  <div class="card">
-    <div class="head"><span style="color:#ff9500">高度の変化</span><span id="alt-range" style="color:#888"></span></div>
-    <canvas id="cv-alt" width="720" height="300"></canvas>
+  <!-- 位置タブ：計測開始地点からの移動量（m） -->
+  <div class="card visible" id="card-x" data-tab="pos">
+    <div class="head"><span style="color:var(--ax-x)">位置 X（東西）</span><span class="val" id="val-x">--</span></div>
+    <canvas id="cv-x" width="720" height="300"></canvas>
   </div>
-  <div class="card">
-    <div class="head"><span style="color:#d4c400">速度の変化</span><span id="spd-range" style="color:#888"></span></div>
+  <div class="card visible" id="card-y" data-tab="pos">
+    <div class="head"><span style="color:var(--ax-y)">位置 Y（南北）</span><span class="val" id="val-y">--</span></div>
+    <canvas id="cv-y" width="720" height="300"></canvas>
+  </div>
+  <div class="card visible" id="card-z" data-tab="pos">
+    <div class="head"><span style="color:var(--ax-z)">位置 Z（高さ）</span><span class="val" id="val-z">--</span></div>
+    <canvas id="cv-z" width="720" height="300"></canvas>
+  </div>
+
+  <!-- 速度タブ -->
+  <div class="card" id="card-spd" data-tab="spd">
+    <div class="head"><span style="color:var(--ax-x)">速度</span><span class="val" id="val-spd">--</span></div>
     <canvas id="cv-spd" width="720" height="300"></canvas>
   </div>
 
+  <!-- 加速度タブ（速度の変化から計算） -->
+  <div class="card" id="card-acc" data-tab="acc">
+    <div class="head"><span style="color:var(--ax-x)">加速度（速度の変化から計算）</span><span class="val" id="val-acc">--</span></div>
+    <canvas id="cv-acc" width="720" height="300"></canvas>
+  </div>
+
   <p id="err"></p>
-  <p class="hint">
-    ▶ を押して位置情報を「許可」すると計測が始まります。<br>
+  <p class="hint" id="hint">
+    ▶ を押して位置情報を「許可」すると計測が始まります。X/Y/Zは計測開始地点からの移動量（m）です。<br>
+    <b>線の上をタップ</b>するとその点の値、<b>線から離れた場所をタップ</b>すると拡大・縮小します。<br>
     屋内ではGPSがとどきにくく、誤差が大きくなります。散歩や坂道で試すと変化が見えます。
   </p>
 </main>
 
 <script>
+// 系列定義：位置X/Y/Z（m）、速度（m/s）、加速度（m/s²）
+const SERIES = {
+  x:   { t: [], v: [], color: '#ff9500', unit: 'm',    pad: 1,   digits: 1 },
+  y:   { t: [], v: [], color: '#d4c400', unit: 'm',    pad: 1,   digits: 1 },
+  z:   { t: [], v: [], color: '#e04040', unit: 'm',    pad: 1,   digits: 1 },
+  spd: { t: [], v: [], color: '#ff9500', unit: 'm/s',  pad: 0.5, digits: 1 },
+  acc: { t: [], v: [], color: '#ff9500', unit: 'm/s²', pad: 0.5, digits: 2 },
+};
+const KEYS = Object.keys(SERIES);
+const HIT_PX = 30;
+const marker = { x: null, y: null, z: null, spd: null, acc: null };
+
 const playBtn = document.getElementById('playBtn');
 const errEl = document.getElementById('err');
 let watchId = null;
+let t0 = null;
 let lastPos = null;
 let totalDist = 0;
-const altBuf = [], spdBuf = [];   // 値（全履歴を保持）
-const altT = [], spdT = [];       // 経過時間（秒）。phyphox同様、時間軸を圧縮して全体を表示する
-let t0 = null;
+let lat0 = null, lon0 = null, alt0 = null;
+let prevSpd = null, prevSpdT = null;
 
-// グラフ面タップでその点の値を表示
-const marker = { alt: null, spd: null };
-const SERIES = { alt: { buf: altBuf, t: altT }, spd: { buf: spdBuf, t: spdT } };
+// ---- タブ切り替え ----
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.body.classList.remove('zoom');
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('zoomed'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const name = tab.dataset.tab;
+    document.querySelectorAll('.card').forEach(c =>
+      c.classList.toggle('visible', c.dataset.tab === name));
+    document.getElementById('valuesRow').style.display = name === 'pos' ? 'grid' : 'none';
+  });
+});
+
+// ---- タップ操作：線の近く→値／それ以外→拡大・縮小 ----
+function toggleZoom(card) {
+  if (document.body.classList.contains('zoom')) {
+    document.body.classList.remove('zoom');
+    card.classList.remove('zoomed');
+  } else {
+    document.body.classList.add('zoom');
+    card.classList.add('zoomed');
+  }
+}
 
 function spanOf(tArr) {
   return Math.max(tArr.length ? tArr[tArr.length - 1] : 0, 10);
@@ -131,18 +213,30 @@ function nearestIndex(tArr, targetT) {
   return best;
 }
 
-[['alt', 'cv-alt'], ['spd', 'cv-spd']].forEach(([key, id]) => {
-  const cvEl = document.getElementById(id);
+KEYS.forEach(key => {
+  const card = document.getElementById('card-' + key);
+  card.querySelector('.head').addEventListener('click', () => toggleZoom(card));
+  const cvEl = document.getElementById('cv-' + key);
   cvEl.addEventListener('click', (ev) => {
     const rect = cvEl.getBoundingClientRect();
+    const cx = (ev.clientX - rect.left) / rect.width * cvEl.width;
+    const cy = (ev.clientY - rect.top) / rect.height * cvEl.height;
     const s = SERIES[key];
-    if (s.t.length < 2) return;
-    marker[key] = nearestIndex(s.t, (ev.clientX - rect.left) / rect.width * spanOf(s.t));
+    if (s.v.length >= 2) {
+      let min = Math.min(...s.v), max = Math.max(...s.v);
+      const pad = Math.max((max - min) * 0.15, s.pad);
+      min -= pad; max += pad;
+      const i = nearestIndex(s.t, cx / cvEl.width * spanOf(s.t));
+      const ly = cvEl.height - ((s.v[i] - min) / (max - min)) * cvEl.height;
+      if (Math.abs(cy - ly) < HIT_PX) { marker[key] = i; return; }   // 線の上→値
+    }
+    toggleZoom(card);                                                // 線の外→拡大/縮小
   });
 });
 
+// ---- 計測 ----
 playBtn.addEventListener('click', () => {
-  if (watchId !== null) {           // 停止
+  if (watchId !== null) {           // 一時停止
     navigator.geolocation.clearWatch(watchId);
     watchId = null;
     playBtn.textContent = '▶';
@@ -158,55 +252,46 @@ playBtn.addEventListener('click', () => {
     timeout: 15000
   });
   // 再開時：ポーズしていた時間を除いて時間軸を連続させる
-  const lastT = Math.max(altT.length ? altT[altT.length - 1] : 0,
-                         spdT.length ? spdT[spdT.length - 1] : 0);
+  let lastT = 0;
+  KEYS.forEach(k => { const t = SERIES[k].t; if (t.length) lastT = Math.max(lastT, t[t.length - 1]); });
   if (lastT) t0 = performance.now() / 1000 - lastT;
-  marker.alt = null; marker.spd = null;   // 再開時はタップ値の表示を消す
+  KEYS.forEach(k => marker[k] = null);   // 再開時はタップ値の表示を消す
   playBtn.textContent = '⏸';
   errEl.textContent = '';
   draw();
-});
-
-// リセット：計測を止めてデータを消す
-document.getElementById('resetBtn').addEventListener('click', () => {
-  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
-  playBtn.textContent = '▶';
-  t0 = null;
-  altBuf.length = 0; spdBuf.length = 0;
-  altT.length = 0; spdT.length = 0;
-  marker.alt = null; marker.spd = null;
-  totalDist = 0; lastPos = null;
-  document.getElementById('lat').textContent = '--';
-  document.getElementById('lon').textContent = '--';
-  document.getElementById('alt').innerHTML = '-- <small>m</small>';
-  document.getElementById('spd').innerHTML = '-- <small>m/s</small>';
-  document.getElementById('acc').innerHTML = '-- <small>m</small>';
-  document.getElementById('dist').innerHTML = '0 <small>m</small>';
-  document.getElementById('alt-range').textContent = '';
-  document.getElementById('spd-range').textContent = '';
-  ['cv-alt', 'cv-spd'].forEach(id => {
-    const c = document.getElementById(id);
-    c.getContext('2d').clearRect(0, 0, c.width, c.height);
-  });
 });
 
 function onPos(pos) {
   const c = pos.coords;
   document.getElementById('lat').textContent = c.latitude.toFixed(6);
   document.getElementById('lon').textContent = c.longitude.toFixed(6);
-  document.getElementById('alt').innerHTML =
-    (c.altitude === null ? '--' : c.altitude.toFixed(1)) + ' <small>m</small>';
-  document.getElementById('spd').innerHTML =
-    (c.speed === null ? '--' : c.speed.toFixed(1)) + ' <small>m/s</small>';
-  document.getElementById('acc').innerHTML = c.accuracy.toFixed(0) + ' <small>m</small>';
+  document.getElementById('accu').innerHTML = c.accuracy.toFixed(0) + ' <small>m</small>';
 
   const nowS = performance.now() / 1000;
   if (t0 === null) t0 = nowS;
   const t = nowS - t0;
-  if (c.altitude !== null) { altBuf.push(c.altitude); altT.push(t); }
-  if (c.speed !== null) { spdBuf.push(c.speed); spdT.push(t); }
 
-  // 移動きょりの積算（ハバースイン近似）
+  // 開始地点を原点にした移動量（m）に変換
+  const rad = Math.PI / 180, R = 6371000;
+  if (lat0 === null) { lat0 = c.latitude; lon0 = c.longitude; }
+  const xE = (c.longitude - lon0) * rad * R * Math.cos(lat0 * rad);  // 東西
+  const yN = (c.latitude - lat0) * rad * R;                          // 南北
+  pushS('x', t, xE);
+  pushS('y', t, yN);
+  if (c.altitude !== null) {
+    if (alt0 === null) alt0 = c.altitude;
+    pushS('z', t, c.altitude - alt0);
+  }
+  if (c.speed !== null) {
+    pushS('spd', t, c.speed);
+    // 加速度 = 速度の変化 ÷ 時間
+    if (prevSpd !== null && t > prevSpdT) {
+      pushS('acc', t, (c.speed - prevSpd) / (t - prevSpdT));
+    }
+    prevSpd = c.speed; prevSpdT = t;
+  }
+
+  // 移動きょりの積算
   if (lastPos) {
     const d = distMeters(lastPos.latitude, lastPos.longitude, c.latitude, c.longitude);
     if (d > c.accuracy * 0.5) {     // 誤差のゆらぎは足さない
@@ -217,6 +302,12 @@ function onPos(pos) {
   } else {
     lastPos = c;
   }
+}
+
+function pushS(key, t, v) {
+  const s = SERIES[key];
+  s.t.push(t); s.v.push(v);
+  document.getElementById('val-' + key).textContent = v.toFixed(s.digits) + ' ' + s.unit;
 }
 
 function onErr(e) {
@@ -232,38 +323,56 @@ function distMeters(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
+// ---- リセット：計測を止めてデータを消す ----
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+  playBtn.textContent = '▶';
+  t0 = null;
+  lat0 = null; lon0 = null; alt0 = null;
+  prevSpd = null; prevSpdT = null;
+  totalDist = 0; lastPos = null;
+  KEYS.forEach(k => {
+    const s = SERIES[k];
+    s.t.length = 0; s.v.length = 0;
+    marker[k] = null;
+    document.getElementById('val-' + k).textContent = '--';
+    const c = document.getElementById('cv-' + k);
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  });
+  document.getElementById('lat').textContent = '--';
+  document.getElementById('lon').textContent = '--';
+  document.getElementById('accu').innerHTML = '-- <small>m</small>';
+  document.getElementById('dist').innerHTML = '0 <small>m</small>';
+});
+
+// ---- 描画（phyphox方式：時間軸を圧縮して全履歴を表示） ----
 function draw() {
   if (watchId === null) return;
   requestAnimationFrame(draw);
-  drawGraph(document.getElementById('cv-alt'), altT, altBuf, '#ff9500', 'alt-range', 'm', marker.alt);
-  drawGraph(document.getElementById('cv-spd'), spdT, spdBuf, '#d4c400', 'spd-range', 'm/s', marker.spd);
+  KEYS.forEach(k => drawGraph(document.getElementById('cv-' + k), SERIES[k], marker[k]));
 }
 
-// 時間軸の目もり幅を選ぶ（画面内に2〜8本になるように）
 function pickTimeStep(span) {
   const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
   for (const s of steps) if (span / s <= 8) return s;
   return 1200;
 }
 
-function drawGraph(cv, tArr, arr, color, rangeId, unit, mIdx) {
+function drawGraph(cv, s, mIdx) {
   const ctx = cv.getContext('2d');
   const W = cv.width, H = cv.height;
   ctx.clearRect(0, 0, W, H);
-  if (arr.length < 2) {
+  if (s.v.length < 2) {
     ctx.fillStyle = '#666';
     ctx.font = '16px sans-serif';
     ctx.fillText('データ待ち…（GPSは数秒〜数十秒かかります）', 20, H / 2);
     return;
   }
 
-  let min = Math.min(...arr), max = Math.max(...arr);
-  const pad = Math.max((max - min) * 0.15, 1);
+  const span = spanOf(s.t);
+  let min = Math.min(...s.v), max = Math.max(...s.v);
+  const pad = Math.max((max - min) * 0.15, s.pad);
   min -= pad; max += pad;
-  document.getElementById(rangeId).textContent =
-    min.toFixed(0) + '〜' + max.toFixed(0) + ' ' + unit;
-
-  const span = spanOf(tArr);
   const toX = t => (t / span) * W;
   const toY = v => H - ((v - min) / (max - min)) * H;
 
@@ -276,32 +385,35 @@ function drawGraph(cv, tArr, arr, color, rangeId, unit, mIdx) {
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     ctx.fillText(v.toFixed(1), 6, Math.min(Math.max(y - 4, 14), H - 4));
   }
-  // 縦グリッド（時間）
   const tStep = pickTimeStep(span);
   for (let t = tStep; t < span; t += tStep) {
     const x = toX(t);
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
     ctx.fillText(Math.round(t) + 's', x + 4, H - 6);
   }
+  if (min < 0 && max > 0) {
+    const y0 = toY(0);
+    ctx.strokeStyle = '#555';
+    ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(W, y0); ctx.stroke();
+  }
 
-  ctx.strokeStyle = color;
+  ctx.strokeStyle = s.color;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  for (let i = 0; i < arr.length; i++) {
-    const x = toX(tArr[i]);
-    const y = toY(arr[i]);
+  for (let i = 0; i < s.v.length; i++) {
+    const x = toX(s.t[i]);
+    const y = toY(s.v[i]);
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
 
   // タップした点の値（有効数字2桁）
-  if (mIdx !== null && mIdx < arr.length) {
-    const i = mIdx;
-    const x = toX(tArr[i]);
-    const y = toY(arr[i]);
+  if (mIdx !== null && mIdx < s.v.length) {
+    const x = toX(s.t[mIdx]);
+    const y = toY(s.v[mIdx]);
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
-    const label = Number(arr[i].toPrecision(2)).toString();
+    const label = Number(s.v[mIdx].toPrecision(2)).toString();
     ctx.font = 'bold 16px sans-serif';
     const tw = ctx.measureText(label).width;
     const lx = Math.min(Math.max(x - tw / 2, 4), W - tw - 4);

@@ -74,6 +74,7 @@
   .m-dots { letter-spacing: 3px; font-size: 0.9rem; color: #4a5334; }
   .m-dots .on { color: #ffe000; }        /* クリア済み */
   .m-dots .now { color: #a8c26a; }       /* いま挑戦中 */
+  .m-dots .m-remain { color: #a8c26a; font-size: 0.8rem; }
   .m-body { color: #eee; padding: 4px 0; min-height: 1.5rem; }
   .m-body.cleared { animation: m-flash 0.9s; }
   @keyframes m-flash { 0% { background: #4a5334; } 100% { background: transparent; } }
@@ -321,18 +322,16 @@ const MORE_DEFS = [
       },
     };
   },
-  () => {                                             // だんだん速く（同じ向きに加速し続ける）
+  () => {                                             // だんだん速く（1回グイッと動かせばOK）
     const ax = rand(['x', 'y']);
-    let since = null;
     return {
-      html: () => ax + ' の向きに、だんだん速く動かそう',
+      html: () => ax + ' の向きに、グイッと速く動かそう',
       needsMotion: true,
+      // キープ不要。1回でも大きく動かせばクリア（教室でいちばん通しやすい判定）
       tick(e) {
         if (!e) return false;
         const l = e.acceleration; if (!l || l.x === null) return false;
-        // 緩め：小さめのしきい値を短時間キープすればOK（教室でグイッと動かせば通る）
-        if (Math.abs(axVal(l, ax)) > 1.2) { if (since === null) since = performance.now(); return performance.now() - since > 500; }
-        since = null; return false;
+        return Math.abs(axVal(l, ax)) > 3;
       },
     };
   },
@@ -369,7 +368,8 @@ function renderDots() {
     const cls = i < stepIndex ? 'on' : (i === stepIndex ? 'now' : '');
     s += '<span class="' + cls + '">●</span>';
   }
-  mDots.innerHTML = s;
+  const remain = STEP_DEFS.length - stepIndex;   // 残りステップ数
+  mDots.innerHTML = s + (remain > 0 ? ' <span class="m-remain">あと' + remain + 'つ</span>' : '');
 }
 
 function markGuess(picked) {

@@ -125,31 +125,8 @@ function createXYZLab(cfg) {
     if (cfg.onReset) cfg.onReset();
   });
 
-  // ---- ⬇：このページと共通JSを合体させ、単一HTMLとしてダウンロード ----
-  const dl = document.querySelector('a.dl');
-  if (dl) dl.addEventListener('click', async (ev) => {
-    ev.preventDefault();
-    try {
-      const [page, common] = await Promise.all([
-        fetch(location.pathname).then(r => r.text()),
-        fetch('lab-common.js').then(r => r.text()),
-      ]);
-      // ※ '</scr'+'ipt>' と分けているのは、合体後のHTMLでタグと誤認されないため
-      const openTag = '<scr' + 'ipt>';
-      const closeTag = '</scr' + 'ipt>';
-      const merged = page.replace(
-        /<script src="lab-common\.js"><\/script>/,
-        openTag + '\n' + common + '\n' + closeTag);
-      const blob = new Blob([merged], { type: 'text/html' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = (location.pathname.split('/').pop() || 'index.html');
-      a.click();
-      URL.revokeObjectURL(a.href);
-    } catch (e) {
-      location.href = dl.href;   // 合体に失敗したら普通のダウンロードにフォールバック
-    }
-  });
+  // ---- ⬇：ダウンロードは<a download>の標準動作に任せる ----
+  // 配信されるHTMLは build.py が共通JSを埋め込んだ単一ファイルなので、そのまま保存すれば完結する。
 
   // ---- データ受け入れ口（ページ固有リスナーから呼ばれる） ----
   function push(x, y, z) {

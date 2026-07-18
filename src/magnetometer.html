@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>磁気センサー（3軸） | タブレット物理実験ラボ</title>
+<style>
+  :root { --phx-orange: #ffe000; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #1a1a1a;
+    color: #eee;
+    margin: 0;
+  }
+  header {
+    background: var(--phx-orange);
+    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    height: 52px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header a.back {
+    color: #1a1a1a; text-decoration: none;
+    font-size: 1.4rem; padding: 8px 12px;
+  }
+  header .title { font-size: 1.1rem; font-weight: bold; flex: 1; }
+  header button {
+    background: none; border: none; color: #1a1a1a;
+    font-size: 1.5rem; padding: 8px 12px; cursor: pointer;
+  }
+  header a.dl { color: #1a1a1a; text-decoration: none; font-size: 1.3rem; padding: 8px 12px; }
+  main { max-width: 760px; margin: 0 auto; padding: 8px; }
+  .card {
+    margin-bottom: 10px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .card .head {
+    background: #2b2b2b;
+    text-align: center;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 10px;
+  }
+  .card .val { font-variant-numeric: tabular-nums; color: #bbb; }
+  .card canvas { display: block; width: 100%; height: 150px; background: #000; }
+  body.zoom .card { display: none; }
+  body.zoom .card.zoomed { display: block; }
+  body.zoom .card.zoomed canvas { height: 60vh; }
+  body.zoom .card.zoomed .head { font-size: 1.1rem; }
+  .hint { text-align: center; color: #888; font-size: 0.8rem; margin: 12px 0; }
+  .controls { text-align: center; margin: 8px 0; color: #aaa; font-size: 0.9rem; }
+  #err { color: #f88; text-align: center; }
+  #err a { color: #ffe000; }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="index.html">←</a>
+  <div class="title">磁気センサー（3軸）</div>
+  <button id="playBtn" title="計測開始">▶</button>
+  <button id="resetBtn" title="計測を止めてデータを消す">🗑</button>
+  <a class="dl" href="magnetometer.html" download title="このページのHTMLファイルをダウンロード">⬇</a>
+</header>
+
+<main>
+  <div class="controls">単位：µT（マイクロテスラ）　横軸：経過時間（秒）</div>
+
+  <div class="card" id="card-x">
+    <div class="head"><span style="color:var(--ax-x)">磁場 X</span><span class="val" id="val-x">--</span></div>
+    <canvas id="cv-x" width="720" height="300"></canvas>
+  </div>
+  <div class="card" id="card-y">
+    <div class="head"><span style="color:var(--ax-y)">磁場 Y</span><span class="val" id="val-y">--</span></div>
+    <canvas id="cv-y" width="720" height="300"></canvas>
+  </div>
+  <div class="card" id="card-z">
+    <div class="head"><span style="color:var(--ax-z)">磁場 Z</span><span class="val" id="val-z">--</span></div>
+    <canvas id="cv-z" width="720" height="300"></canvas>
+  </div>
+
+  <p id="err"></p>
+  <p class="hint" id="hint">▶ で計測開始。<b>線の上をタップ</b>するとその点の値、<b>線から離れた場所をタップ</b>すると拡大・縮小します（⏸ で止めると読みやすい）。</p>
+</main>
+
+<script src="lab-common.js"></script>
+<script>
+// このページ固有：磁気センサー（Generic Sensor APIのMagnetometer）との接続だけ。
+// グラフ・タップ・拡大・▶⏸🗑⬇はすべて lab-common.js（正本）にある。
+
+const UNSUPPORTED_MSG =
+  'この端末のブラウザは磁気センサーの生データ（3軸）に対応していません。' +
+  'iPad Safariは非対応、Chromeも標準では無効です。' +
+  '方位だけなら <a href="compass.html">コンパス</a> で見られます。';
+
+const lab = createXYZLab({
+  unit: 'µT',
+  digits: 1,
+  padMin: 2,
+  noDataMsg: 'データが来ません。' + UNSUPPORTED_MSG,
+  start: async (lab) => {
+    // Generic Sensor API（Chrome系のみ・多くはフラグ必須）
+    if (typeof Magnetometer === 'undefined') return UNSUPPORTED_MSG;
+    try {
+      const sensor = new Magnetometer({ frequency: 10 });
+      sensor.addEventListener('reading', () => {
+        lab.push(sensor.x, sensor.y, sensor.z);
+      });
+      sensor.addEventListener('error', (e) => {
+        document.getElementById('err').innerHTML =
+          'センサーにアクセスできませんでした（' + e.error.name + '）。' + UNSUPPORTED_MSG;
+      });
+      sensor.start();
+      return null;
+    } catch (e) {
+      return '開始に失敗：' + e.message + '。' + UNSUPPORTED_MSG;
+    }
+  },
+});
+</script>
+</body>
+</html>

@@ -51,14 +51,17 @@
     padding: 5px 10px;
   }
   .card .val { font-variant-numeric: tabular-nums; color: #bbb; }
-  .card canvas { display: block; width: 100%; height: 150px; background: #000; }
-  /* 拡大表示 */
+  /* グラフのマウント枠と拡大時サイズは lab-common.js が動的注入するCSS（.uplot-mount）に任せる。 */
+  /* 拡大表示（card全体の拡大は既存UX） */
   body.zoom .card { display: none; }
   body.zoom .card.zoomed { display: block; }
-  body.zoom .card.zoomed canvas { height: 60vh; }
   body.zoom .card.zoomed .head { font-size: 1.1rem; }
   .hint { text-align: center; color: #888; font-size: 0.8rem; margin: 12px 0; }
   .controls { text-align: center; margin: 8px 0; color: #aaa; font-size: 0.9rem; }
+  /* 表示モード切替タブ（xyz / |a|）。選択中は黄色、それ以外は暗いグレー。 */
+  .modes { display: inline-flex; gap: 0; margin-right: 12px; border: 1px solid #333; border-radius: 6px; overflow: hidden; }
+  .modes button { background: #222; color: #bbb; border: none; padding: 6px 14px; font-size: 0.95rem; cursor: pointer; }
+  .modes button.active { background: var(--phx-orange); color: #1a1a1a; font-weight: bold; }
   #err { color: #f88; text-align: center; }
   /* 🔰チュートリアルの見た目は tutorial.js（共通エンジン）が持つ */
 </style>
@@ -74,6 +77,10 @@
 
 <main>
   <div class="controls">
+    <span class="modes">
+      <button id="modeXYZ" class="active" title="x/y/z 3方向の成分を表示">xyz</button>
+      <button id="modeAbs" title="加速度ベクトルの大きさ |a|=√(x²+y²+z²)">|a|</button>
+    </span>
     <label><input type="checkbox" id="gravity" checked> 重力をふくめる</label>
     　単位：m/s²
   </div>
@@ -92,11 +99,16 @@
     <div class="head"><span style="color:var(--ax-z)">加速度 z（スクリーン手前方向）</span><span class="val" id="val-z">--</span></div>
     <canvas id="cv-z" width="720" height="300"></canvas>
   </div>
+  <div class="card" id="card-abs" style="display:none">
+    <div class="head"><span style="color:#eee">加速度の大きさ |a|＝√(x²+y²+z²)</span><span class="val" id="val-abs">--</span></div>
+    <canvas id="cv-abs" width="720" height="300"></canvas>
+  </div>
 
   <p id="err"></p>
   <p class="hint" id="hint"><b>線をタップ</b>＝値、<b>まわりをタップ</b>＝拡大</p>
 </main>
 
+<script src="uplot.js"></script>
 <script src="lab-common.js"></script>
 <script src="tutorial.js"></script>
 <script>
@@ -140,6 +152,19 @@ const lab = createXYZLab({
 
 // 他のタブ・アプリに切り替えたら計測を止め、センサーを手放す（戻ってきても停止のまま）
 document.addEventListener('visibilitychange', () => { if (document.hidden) lab.release(); });
+
+// ---- 表示モード切替（xyz ⇔ |a|）----
+// phyphox の「絶対値」モードと同じく、3成分の大きさ√(x²+y²+z²) を1本のグラフで見せる。
+// 重力を含む/含まないの切替は共通のチェックで、|a|モードでも有効（自由落下で |a|≒0 の観察に必要）。
+const modeXYZBtn = document.getElementById('modeXYZ');
+const modeAbsBtn = document.getElementById('modeAbs');
+function switchMode(m) {
+  lab.setMode(m);
+  modeXYZBtn.classList.toggle('active', m === 'xyz');
+  modeAbsBtn.classList.toggle('active', m === 'abs');
+}
+modeXYZBtn.addEventListener('click', () => switchMode('xyz'));
+modeAbsBtn.addEventListener('click', () => switchMode('abs'));
 
 // ---- チュートリアルのステップ定義（判定だけ書く。器は tutorial.js） ----
 // 「どの軸？」問題：間違えたら次の方向へ差し替え（tutorialは上→右→下→左で循環）。

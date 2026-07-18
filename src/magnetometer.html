@@ -51,10 +51,9 @@
     padding: 5px 10px;
   }
   .card .val { font-variant-numeric: tabular-nums; color: #bbb; }
-  .card canvas { display: block; width: 100%; height: 150px; background: #000; }
+  /* グラフのマウント枠と拡大時サイズは lab-common.js が動的注入する .uplot-mount に任せる。 */
   body.zoom .card { display: none; }
   body.zoom .card.zoomed { display: block; }
-  body.zoom .card.zoomed canvas { height: 60vh; }
   body.zoom .card.zoomed .head { font-size: 1.1rem; }
   .hint { text-align: center; color: #888; font-size: 0.8rem; margin: 12px 0; }
   .controls { text-align: center; margin: 8px 0; color: #aaa; font-size: 0.9rem; }
@@ -90,6 +89,7 @@
   <p class="hint" id="hint">▶ で計測開始。<b>線の上をタップ</b>するとその点の値、<b>線から離れた場所をタップ</b>すると拡大・縮小します（⏸ で止めると読みやすい）。</p>
 </main>
 
+<script src="uplot.js"></script>
 <script src="lab-common.js"></script>
 <script>
 // このページ固有：磁気センサー（Generic Sensor APIのMagnetometer）との接続だけ。

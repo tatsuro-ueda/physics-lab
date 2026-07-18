@@ -69,7 +69,6 @@
   <div class="title">加速度</div>
   <button id="playBtn" title="計測開始">▶</button>
   <button id="resetBtn" title="計測を止めてデータを消す">🗑</button>
-  <a class="dl" href="acceleration.html" download title="このページのHTMLファイルをダウンロード">⬇</a>
   <button id="missionBtn" title="チュートリアル（グラフの読み方を体験で学ぶ）">🔰</button>
 </header>
 
@@ -103,7 +102,7 @@
 // タブレット物理実験ラボ 共通部品（正本はこのファイル1つだけ）
 // ---------------------------------------------------------------------
 // 3軸センサーページ（acceleration / gyroscope / magnetometer）の
-// グラフ描画・タップ操作・拡大縮小・▶⏸・🗑・⬇ を全部ここで引き受ける。
+// グラフ描画・タップ操作・拡大縮小・▶⏸・🗑 を全部ここで引き受ける。
 // 各ページは createXYZLab({...}) を1回呼び、センサー固有の処理だけ書く。
 // どこに何があるかは README.md の「部品対応表」を参照。
 // =====================================================================
@@ -226,8 +225,6 @@ function createXYZLab(cfg) {
     if (cfg.onReset) cfg.onReset();
   });
 
-  // ---- ⬇：ダウンロードは<a download>の標準動作に任せる ----
-  // 配信されるHTMLは build.py が共通JSを埋め込んだ単一ファイルなので、そのまま保存すれば完結する。
 
   // ---- データ受け入れ口（ページ固有リスナーから呼ばれる） ----
   function push(x, y, z) {
@@ -648,7 +645,6 @@ const STEPS = [
   () => ({ html: () => '⏸ を押して、グラフを止めよう', tick: () => !lab.isRunning() }),
   () => ({ html: () => '線の上をタップして、その点の値を読もう', tick: () => lab.hasMarker() }),
   () => ({ html: () => 'グラフをもう一度タップして、元の大きさに戻そう', tick: () => !lab.isZoomed() }),
-  () => ({ html: () => '⬇ を押すと、アプリをファイルにして持ち帰れる', on: 'dl' }),
 ];
 
 const MORE_DIRS = [
@@ -718,8 +714,6 @@ const tut = createTutorial({
 document.getElementById('playBtn').addEventListener('click', () => setTimeout(() => tut.tick(null), 50));
 setInterval(() => tut.tick(null), 200);
 
-// ⬇ タップをチュートリアルへ通知（保存ステップ用。ダウンロード自体はそのまま実行される）
-document.querySelector('a.dl').addEventListener('click', () => tut.event('dl'));
 </script>
 </body>
 </html>

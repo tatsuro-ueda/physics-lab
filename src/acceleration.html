@@ -69,7 +69,6 @@
   <div class="title">加速度</div>
   <button id="playBtn" title="計測開始">▶</button>
   <button id="resetBtn" title="計測を止めてデータを消す">🗑</button>
-  <a class="dl" href="acceleration.html" download title="このページのHTMLファイルをダウンロード">⬇</a>
   <button id="missionBtn" title="チュートリアル（グラフの読み方を体験で学ぶ）">🔰</button>
 </header>
 
@@ -214,7 +213,6 @@ const STEPS = [
   () => ({ html: () => '⏸ を押して、グラフを止めよう', tick: () => !lab.isRunning() }),
   () => ({ html: () => '線の上をタップして、その点の値を読もう', tick: () => lab.hasMarker() }),
   () => ({ html: () => 'グラフをもう一度タップして、元の大きさに戻そう', tick: () => !lab.isZoomed() }),
-  () => ({ html: () => '⬇ を押すと、アプリをファイルにして持ち帰れる', on: 'dl' }),
 ];
 
 const MORE_DIRS = [
@@ -284,8 +282,6 @@ const tut = createTutorial({
 document.getElementById('playBtn').addEventListener('click', () => setTimeout(() => tut.tick(null), 50));
 setInterval(() => tut.tick(null), 200);
 
-// ⬇ タップをチュートリアルへ通知（保存ステップ用。ダウンロード自体はそのまま実行される）
-document.querySelector('a.dl').addEventListener('click', () => tut.event('dl'));
 </script>
 </body>
 </html>

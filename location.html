@@ -825,10 +825,13 @@ function drawTrack(cvId, spanId, pts, minSpan, opts) {
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
   const toX = (x) => W / 2 + (x - cx) * scale;
   const toY = (y) => H / 2 - (y - cy) * scale;   // 北=y+ を画面の上に
-  const metricValues = opts.metricKey
-    ? pts.map((p) => p[opts.metricKey]).filter((v) => Number.isFinite(v))
-    : [];
-  const maxMetric = metricValues.length ? Math.max(...metricValues) : 0;
+  let maxMetric = 0;
+  if (opts.metricKey) {
+    for (const p of pts) {
+      const metric = p[opts.metricKey];
+      if (Number.isFinite(metric) && metric > maxMetric) maxMetric = metric;
+    }
+  }
 
   // 方位と表示はば
   ctx.fillStyle = '#89a';

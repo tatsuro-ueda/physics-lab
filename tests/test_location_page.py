@@ -42,6 +42,8 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertIn("track[track.length - 1].accel = accelMag", source)
         self.assertIn("metricKey: 'speed'", source)
         self.assertIn("metricKey: 'accel'", source)
+        self.assertNotIn("pts.map((p) => p[opts.metricKey]).filter((v) => Number.isFinite(v))", source)
+        self.assertNotIn("Math.max(...metricValues)", source)
 
     def test_generated_location_page_has_learning_hooks(self):
         generated = LOCATION_BUILD.read_text(encoding="utf-8")
@@ -55,6 +57,10 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertNotIn('<script src="tutorial.js"></script>', generated)
         self.assertNotIn('<script src="tour.js"></script>', generated)
         self.assertNotIn('<link rel="stylesheet" href="driver.css">', generated)
+        self.assertNotIn("const vtrack =", generated)
+        self.assertNotIn("const atrack =", generated)
+        self.assertIn("metricKey: 'speed'", generated)
+        self.assertIn("metricKey: 'accel'", generated)
 
 
 if __name__ == "__main__":

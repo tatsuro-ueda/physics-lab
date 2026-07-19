@@ -256,6 +256,7 @@ const PAUSE_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="current
 const errEl = document.getElementById('err');
 const statusEl = document.getElementById('status');
 const track = [];        // 歩いた軌跡（開始地点からの東西・南北の移動量 m）
+let drawScheduled = false;
 let watchId = null;
 let t0 = null;
 let lastPos = null;
@@ -303,7 +304,7 @@ function startWatching() {
   errEl.textContent = '';
   setStatus('記録中。少し歩いて、線や地図の変化を見よう');
   tut.event('started');
-  draw();
+  scheduleDraw();
 }
 
 const tut = createTutorial({
@@ -573,9 +574,16 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 });
 
 // ---- 描画（phyphox方式：時間軸を圧縮して全履歴を表示） ----
+function scheduleDraw() {
+  if (drawScheduled) return;
+  drawScheduled = true;
+  requestAnimationFrame(() => {
+    drawScheduled = false;
+    draw();
+  });
+}
+
 function draw() {
-  if (watchId === null) return;
-  requestAnimationFrame(draw);
   KEYS.forEach(k => drawGraph(document.getElementById('cv-' + k), SERIES[k], marker[k]));
   drawTrack('cv-map', 'map-span', track, 10, {
     startRing: true,

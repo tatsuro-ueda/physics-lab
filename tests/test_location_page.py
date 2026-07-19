@@ -80,6 +80,19 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertNotIn("pushS('vx', t, vX); pushS('vy', t, vY); pushS('vz', t, vZ);", source)
         self.assertNotIn("pushS('ax', t, aX); pushS('ay', t, aY); pushS('az', t, aZ);", source)
 
+    def test_location_page_schedules_draws_instead_of_looping_forever(self):
+        source = LOCATION_SOURCE.read_text(encoding="utf-8")
+
+        self.assertIn("let drawScheduled = false;", source)
+        self.assertIn("function scheduleDraw()", source)
+        self.assertIn("if (drawScheduled) return;", source)
+        self.assertIn("drawScheduled = true;", source)
+        self.assertIn("requestAnimationFrame(() => {", source)
+        self.assertIn("drawScheduled = false;", source)
+        self.assertIn("scheduleDraw();", source)
+        self.assertNotIn("requestAnimationFrame(draw);", source)
+        self.assertNotIn("if (watchId === null) return;", source)
+
     def test_generated_location_page_has_learning_hooks(self):
         generated = LOCATION_BUILD.read_text(encoding="utf-8")
 

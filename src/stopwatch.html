@@ -146,8 +146,8 @@ const historyEl = document.getElementById('history');
 
 let audioCtx = null, analyser = null, stream = null;
 let looping = false;     // loop() の二重起動を防ぐ（フォーカス外れ→再開時）
-// 連続モード状態機械：拍手のたびに armed→running→paused→running→paused… と切り替わる。
-// phyphox の音響ストップウォッチ「Extended モード」と同じ動作。
+// 音待ち→計測中→一時停止で区切りを確定し、一時停止中はマイクを閉じる。
+// 再開は必ずボタンで再準備してから、次の音を待つ。
 let mode = 'idle';       // idle | armed | running | paused
 let segmentStart = 0;    // 現区間のスタート時刻（audioCtx.currentTime ベース）
 let accum = 0;           // 前区間までの累積秒
@@ -167,9 +167,15 @@ function updateEchoUI() { echoVal.textContent = echoTime().toFixed(1); }
 echoSlider.addEventListener('input', updateEchoUI);
 updateEchoUI();
 
-btn.addEventListener('click', async () => {
-  // 計測中（armed/running/paused）にボタンを押すと「中断」＝データを捨てて idle へ戻す。
-  if (mode !== 'idle') { clearAll(); setIdle(); return; }
+function releaseAudio() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
+  analyser = null;
+  fillEl.style.width = '0%';
+  fillEl.style.background = '#6f9';
+}
+
+async function armStopwatch({ preserveData, stateText, tutorialEvent }) {
   if (!audioCtx) {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: {
@@ -177,7 +183,7 @@ btn.addEventListener('click', async () => {
       }});
     } catch (e) {
       errEl.textContent = 'マイクが使えませんでした：' + e.message;
-      return;
+      return false;
     }
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const src = audioCtx.createMediaStreamSource(stream);
@@ -186,18 +192,43 @@ btn.addEventListener('click', async () => {
     src.connect(analyser);
     if (!looping) { looping = true; loop(); }   // 既に回っていれば二重起動しない
   }
-  clearAll();
+  if (!preserveData) clearAll();
   mode = 'armed';
   lastTrigger = audioCtx.currentTime;
-  stateEl.innerHTML = TUT_ICONS.mic + ' 最初の音を待っています…';
+  stateEl.innerHTML = stateText;
   stateEl.className = 'waiting';
   btn.textContent = '中断';
   btn.classList.add('stop');
   errEl.textContent = '';
-  tut.event('armed');
+  tut.event(tutorialEvent);
+  return true;
+}
+
+btn.addEventListener('click', async () => {
+  // 音待ち/計測中は「中断」で破棄、一時停止後は「開始」で次の音待ちに戻る。
+  if (mode === 'armed' || mode === 'running') {
+    releaseAudio();
+    clearAll();
+    setIdle();
+    return;
+  }
+  if (mode === 'paused') {
+    await armStopwatch({
+      preserveData: true,
+      stateText: TUT_ICONS.mic + ' 次の音を待っています…',
+      tutorialEvent: 'rearmed',
+    });
+    return;
+  }
+  await armStopwatch({
+    preserveData: false,
+    stateText: TUT_ICONS.mic + ' 最初の音を待っています…',
+    tutorialEvent: 'armed',
+  });
 });
 
 resetBtn.addEventListener('click', () => {
+  releaseAudio();
   clearAll();
   setIdle();
 });
@@ -217,6 +248,14 @@ function setIdle() {
   btn.classList.remove('stop');
 }
 
+function setPausedState() {
+  mode = 'paused';
+  stateEl.innerHTML = TUT_ICONS.pause + ' 止まりました。「開始」を押すと次の音を待ちます';
+  stateEl.className = 'done';
+  btn.textContent = '開始（次の音を待つ）';
+  btn.classList.remove('stop');
+}
+
 function updateHistory() {
   if (!laps.length) { historyEl.textContent = ''; return; }
   historyEl.innerHTML = '記録：' +
@@ -225,7 +264,7 @@ function updateHistory() {
 
 function loop() {
   requestAnimationFrame(loop);
-  if (!analyser) return;
+  if (!analyser || !audioCtx) return;
 
   const data = new Float32Array(analyser.fftSize);
   analyser.getFloatTimeDomainData(data);
@@ -252,19 +291,11 @@ function loop() {
     const lap = now - segmentStart;
     accum += lap;
     laps.push(lap);
-    mode = 'paused';
     timeEl.textContent = accum.toFixed(2);
-    stateEl.innerHTML = TUT_ICONS.pause + ' 止まりました。もう一度たたくと続きから動きます';
-    stateEl.className = 'done';
     updateHistory();
+    releaseAudio();
+    setPausedState();
     tut.event('paused', lap);
-  } else if (triggered && mode === 'paused') {
-    lastTrigger = now;
-    segmentStart = now;
-    mode = 'running';
-    stateEl.innerHTML = TUT_ICONS.timer + ' 計測中… もう一度たたくと止まります';
-    stateEl.className = 'measuring';
-    tut.event('resumed');
   }
 
   if (mode === 'running') {
@@ -274,7 +305,7 @@ function loop() {
 
 // ---- チュートリアルのステップ定義（判定だけ。器は tutorial.js） ----
 // 範囲当て課題（lo〜hi秒の区間をつくる）。秒は上の大きな数字に出るので、ヒントは方向だけ。
-// 連続モードでは paused イベントに直前区間の秒が渡ってくる。
+// 一時停止後はボタンで再準備し、次の区間を測る。
 function rangeStep(lo, hi) {
   return {
     html: () => lo + '〜' + hi + '秒の区間をつくってみよう',
@@ -303,8 +334,9 @@ const STEPS = [
   () => ({ html: () => 'タイマーが動いているのを見てみよう', observe: true }),
   () => ({ html: () => 'もう一度たたくと、タイマーは止まります（一時停止）', on: 'paused' }),
   () => ({ html: () => '下に「区間①」が記録されたね', observe: true }),
-  () => ({ html: () => 'もう一度たたくと、続きから動きます', on: 'resumed' }),
-  () => ({ html: () => 'さらにもう一度たたいて、もう一区間つくろう', on: 'paused' }),
+  () => ({ html: () => '「開始」を押すと、次の音を待てます', on: 'rearmed' }),
+  () => ({ html: () => '次の音で、続きの区間をスタート', on: 'started' }),
+  () => ({ html: () => 'さらにもう一度たたいて、もう一区間を止めよう', on: 'paused' }),
   () => ({ html: () => '「区間②」も記録されたね', observe: true }),
   // 環境調整（スライダーを右へ動かしたら次へ）。開始時点の値を基準に、そこから右へ増えたら合格。
   () => { const base = parseFloat(thSlider.value);
@@ -334,9 +366,11 @@ echoSlider.addEventListener('input', () => tut.event('slider-echo'));
 // （チュートリアルの進捗 localStorage は残す）。
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) return;
-  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-  if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
-  analyser = null;
+  releaseAudio();
+  if (mode === 'paused') {
+    setPausedState();
+    return;
+  }
   setIdle();
 });
 </script>

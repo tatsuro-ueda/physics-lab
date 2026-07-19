@@ -228,6 +228,26 @@ const HIT_PX = 30;
 const TUTORIAL_MOVE_METERS = 5;
 const marker = {};
 KEYS.forEach(k => marker[k] = null);
+const velocityWindow = [];
+const accelWindow = [];
+
+// ---- spike filter helpers ----
+function median3(a, b, c) {
+  return [a, b, c].sort((x, y) => x - y)[1];
+}
+
+function pushMedianWindow(buffer, sample, keys) {
+  buffer.push(sample);
+  if (buffer.length < 3) return null;
+  const [first, middle, last] = buffer;
+  const settled = { ...middle };
+  keys.forEach((key) => {
+    settled[key] = median3(first[key], middle[key], last[key]);
+  });
+  buffer.shift();
+  return settled;
+}
+// ---- タブ切り替え ----
 
 const playBtn = document.getElementById('playBtn');
 // ヘッダーは絵文字ではなくラインSVGアイコン（他ページと同じ言語）
@@ -320,7 +340,7 @@ const tut = createTutorial({
   completeText: window.TUT_ICONS.check + ' チュートリアル完了！位置の見方をつかめたね',
 });
 
-// ---- タブ切り替え ----
+// ---- タブ表示切り替え ----
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.body.classList.remove('zoom');

@@ -409,6 +409,51 @@ playBtn.addEventListener('click', () => {
   startWatching();
 });
 
+function confirmAccelerationSample(rawSample) {
+  const settledAccel = pushMedianWindow(accelWindow, rawSample, ['ax', 'ay', 'az']);
+  if (!settledAccel) return;
+
+  pushS('ax', settledAccel.t, settledAccel.ax);
+  pushS('ay', settledAccel.t, settledAccel.ay);
+  pushS('az', settledAccel.t, settledAccel.az);
+
+  const accelMag = Math.hypot(settledAccel.ax, settledAccel.ay, settledAccel.az);
+  track[settledAccel.trackIndex].accel = accelMag;
+  document.getElementById('accMag').innerHTML =
+    accelMag.toFixed(2) + ' <small>m/s²</small>';
+}
+
+function confirmVelocitySample(rawSample) {
+  const settledVelocity = pushMedianWindow(velocityWindow, rawSample, ['vx', 'vy', 'vz']);
+  if (!settledVelocity) return;
+
+  const prevVI = SERIES.vx.v.length - 1;
+  const prevVX = prevVI >= 0 ? SERIES.vx.v[prevVI] : null;
+  const prevVY = prevVI >= 0 ? SERIES.vy.v[prevVI] : null;
+  const prevVZ = prevVI >= 0 ? SERIES.vz.v[prevVI] : null;
+  const prevVT = prevVI >= 0 ? SERIES.vx.t[prevVI] : null;
+
+  pushS('vx', settledVelocity.t, settledVelocity.vx);
+  pushS('vy', settledVelocity.t, settledVelocity.vy);
+  pushS('vz', settledVelocity.t, settledVelocity.vz);
+
+  const speedMag = Math.hypot(settledVelocity.vx, settledVelocity.vy, settledVelocity.vz);
+  track[settledVelocity.trackIndex].speed = speedMag;
+  document.getElementById('spdMag').innerHTML =
+    speedMag.toFixed(2) + ' <small>m/s</small>';
+
+  if (prevVI >= 0 && settledVelocity.t > prevVT) {
+    const dtv = settledVelocity.t - prevVT;
+    confirmAccelerationSample({
+      t: settledVelocity.t,
+      trackIndex: settledVelocity.trackIndex,
+      ax: (settledVelocity.vx - prevVX) / dtv,
+      ay: (settledVelocity.vy - prevVY) / dtv,
+      az: (settledVelocity.vz - prevVZ) / dtv,
+    });
+  }
+}
+
 function onPos(pos) {
   const c = pos.coords;
   document.getElementById('lat').textContent = c.latitude.toFixed(6);
@@ -443,26 +488,13 @@ function onPos(pos) {
       const vX = (xE - sx.v[prevI]) / dt;
       const vY = (yN - SERIES.y.v[prevI]) / dt;
       const vZ = (zU - SERIES.z.v[prevI]) / dt;
-      const speedMag = Math.hypot(vX, vY, vZ);
-      const prevVI = SERIES.vx.v.length - 1;
-      pushS('vx', t, vX); pushS('vy', t, vY); pushS('vz', t, vZ);
-      track[track.length - 1].speed = speedMag;
-      document.getElementById('spdMag').innerHTML =
-        speedMag.toFixed(2) + ' <small>m/s</small>';
-
-      if (prevVI >= 0) {
-        const dtv = t - SERIES.vx.t[prevVI];
-        if (dtv > 0) {
-          const aX = (vX - SERIES.vx.v[prevVI]) / dtv;
-          const aY = (vY - SERIES.vy.v[prevVI]) / dtv;
-          const aZ = (vZ - SERIES.vz.v[prevVI]) / dtv;
-          const accelMag = Math.hypot(aX, aY, aZ);
-          pushS('ax', t, aX); pushS('ay', t, aY); pushS('az', t, aZ);
-          track[track.length - 1].accel = accelMag;
-          document.getElementById('accMag').innerHTML =
-            accelMag.toFixed(2) + ' <small>m/s²</small>';
-        }
-      }
+      confirmVelocitySample({
+        t,
+        trackIndex: track.length - 1,
+        vx: vX,
+        vy: vY,
+        vz: vZ,
+      });
     }
   }
 
@@ -531,6 +563,8 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('accMag').innerHTML = '-- <small>m/s²</small>';
   errEl.textContent = '';
   track.length = 0;
+  velocityWindow.length = 0;
+  accelWindow.length = 0;
   [['cv-map', 'map-span'], ['cv-vmap', 'vmap-span'], ['cv-amap', 'amap-span']].forEach(([cvId, spanId]) => {
     document.getElementById(spanId).textContent = '';
     const c = document.getElementById(cvId);

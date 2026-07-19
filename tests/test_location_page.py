@@ -38,8 +38,6 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertNotIn("const vtrack =", source)
         self.assertNotIn("const atrack =", source)
         self.assertIn("track.push({ x: xE, y: yN, speed: null, accel: null })", source)
-        self.assertIn("track[track.length - 1].speed = speedMag", source)
-        self.assertIn("track[track.length - 1].accel = accelMag", source)
         self.assertIn("metricKey: 'speed'", source)
         self.assertIn("metricKey: 'accel'", source)
         self.assertNotIn("pts.map((p) => p[opts.metricKey]).filter((v) => Number.isFinite(v))", source)
@@ -65,6 +63,22 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertIn("位置の取得がタイムアウトしました。空が開けた場所で、もう一度▶を押してね", source)
         self.assertIn('<span class="hint-plain">', source)
         self.assertIn('<span class="hint-zoom">', source)
+
+    def test_location_page_filters_velocity_and_acceleration_spikes(self):
+        source = LOCATION_SOURCE.read_text(encoding="utf-8")
+
+        self.assertIn("const velocityWindow = []", source)
+        self.assertIn("const accelWindow = []", source)
+        self.assertIn("function confirmVelocitySample(rawSample)", source)
+        self.assertIn("function confirmAccelerationSample(rawSample)", source)
+        self.assertIn("const settledVelocity = pushMedianWindow(velocityWindow, rawSample, ['vx', 'vy', 'vz']);", source)
+        self.assertIn("const settledAccel = pushMedianWindow(accelWindow, rawSample, ['ax', 'ay', 'az']);", source)
+        self.assertIn("track[settledVelocity.trackIndex].speed = speedMag", source)
+        self.assertIn("track[settledAccel.trackIndex].accel = accelMag", source)
+        self.assertIn("velocityWindow.length = 0;", source)
+        self.assertIn("accelWindow.length = 0;", source)
+        self.assertNotIn("pushS('vx', t, vX); pushS('vy', t, vY); pushS('vz', t, vZ);", source)
+        self.assertNotIn("pushS('ax', t, aX); pushS('ay', t, aY); pushS('az', t, aZ);", source)
 
     def test_generated_location_page_has_learning_hooks(self):
         generated = LOCATION_BUILD.read_text(encoding="utf-8")

@@ -208,6 +208,8 @@
 </main>
 
 <script src="driver.js"></script>
+<script src="uplot.js"></script>
+<script src="lab-common.js"></script>
 <script src="tutorial.js"></script>
 <script src="tour.js"></script>
 <script>
@@ -224,10 +226,7 @@ const SERIES = {
   az: { t: [], v: [], color: '#e04040', unit: 'm/s²', pad: 0.5, digits: 2 },
 };
 const KEYS = Object.keys(SERIES);
-const HIT_PX = 30;
 const TUTORIAL_MOVE_METERS = 5;
-const marker = {};
-KEYS.forEach(k => marker[k] = null);
 const velocityWindow = [];
 const accelWindow = [];
 
@@ -299,11 +298,12 @@ function startWatching() {
   let lastT = 0;
   KEYS.forEach(k => { const t = SERIES[k].t; if (t.length) lastT = Math.max(lastT, t[t.length - 1]); });
   if (lastT) t0 = performance.now() / 1000 - lastT;
-  KEYS.forEach(k => marker[k] = null);   // 再開時はタップ値の表示を消す
+  graphs.clearMarkers();
   playBtn.innerHTML = PAUSE_SVG;
   errEl.textContent = '';
   setStatus('記録中。少し歩いて、線や地図の変化を見よう');
   tut.event('started');
+  graphs.refreshVisible();
   scheduleDraw();
 }
 
@@ -341,6 +341,26 @@ const tut = createTutorial({
   completeText: window.TUT_ICONS.check + ' チュートリアル完了！位置の見方をつかめたね',
 });
 
+const graphs = createTimeSeriesCharts({
+  series: SERIES,
+  getVisibleKeys: () => {
+    const active = document.querySelector('.tab.active')?.dataset.tab || 'pos';
+    if (active === 'spd') return ['vx', 'vy', 'vz'];
+    if (active === 'acc') return ['ax', 'ay', 'az'];
+    return ['x', 'y', 'z'];
+  },
+  defaultHeight: '150px',
+  noDataText: 'データ待ち…（GPSは数秒〜数十秒かかります）',
+  enableHeadToggle: true,
+  onZoomChange: ({ zoomed }) => {
+    if (zoomed) tut.event('zoomed');
+    scheduleDraw();
+  },
+  onMarker: () => {
+    tut.event('marker');
+  },
+});
+
 // ---- タブ表示切り替え ----
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -353,73 +373,8 @@ document.querySelectorAll('.tab').forEach(tab => {
       c.classList.toggle('visible', c.dataset.tab === name));
     document.querySelectorAll('.values').forEach(v =>
       v.classList.toggle('visible', v.id === 'values-' + name));
+    graphs.refreshVisible();
     scheduleDraw();
-  });
-});
-
-// ---- タップ操作：線の近く→値／それ以外→拡大・縮小 ----
-function toggleZoom(card) {
-  if (document.body.classList.contains('zoom')) {
-    document.body.classList.remove('zoom');
-    card.classList.remove('zoomed');
-  } else {
-    document.body.classList.add('zoom');
-    card.classList.add('zoomed');
-  }
-}
-
-function spanOf(tArr) {
-  return Math.max(tArr.length ? tArr[tArr.length - 1] : 0, 10);
-}
-
-function nearestIndex(tArr, targetT) {
-  let best = 0;
-  for (let j = 1; j < tArr.length; j++) {
-    if (Math.abs(tArr[j] - targetT) < Math.abs(tArr[best] - targetT)) best = j;
-  }
-  return best;
-}
-
-function seriesMinMax(values) {
-  let min = Infinity;
-  let max = -Infinity;
-  for (const value of values) {
-    if (value < min) min = value;
-    if (value > max) max = value;
-  }
-  return { min, max };
-}
-
-KEYS.forEach(key => {
-  const card = document.getElementById('card-' + key);
-  card.querySelector('.head').addEventListener('click', () => {
-    toggleZoom(card);
-    scheduleDraw();
-  });
-  const cvEl = document.getElementById('cv-' + key);
-  cvEl.addEventListener('click', (ev) => {
-    const rect = cvEl.getBoundingClientRect();
-    const cx = (ev.clientX - rect.left) / rect.width * cvEl.width;
-    const cy = (ev.clientY - rect.top) / rect.height * cvEl.height;
-    const s = SERIES[key];
-    if (s.v.length >= 2) {
-      const stats = seriesMinMax(s.v);
-      let min = stats.min;
-      let max = stats.max;
-      const pad = Math.max((max - min) * 0.15, s.pad);
-      min -= pad; max += pad;
-      const i = nearestIndex(s.t, cx / cvEl.width * spanOf(s.t));
-      const ly = cvEl.height - ((s.v[i] - min) / (max - min)) * cvEl.height;
-      if (Math.abs(cy - ly) < HIT_PX) {
-        marker[key] = i;
-        tut.event('marker');
-        scheduleDraw();
-        return;
-      }   // 線の上→値
-    }
-    toggleZoom(card);                                                // 線の外→拡大/縮小
-    scheduleDraw();
-    if (document.body.classList.contains('zoom')) tut.event('zoomed');
   });
 });
 
@@ -436,9 +391,9 @@ function confirmAccelerationSample(rawSample) {
   const settledAccel = pushMedianWindow(accelWindow, rawSample, ['ax', 'ay', 'az']);
   if (!settledAccel) return;
 
-  pushS('ax', settledAccel.t, settledAccel.ax);
-  pushS('ay', settledAccel.t, settledAccel.ay);
-  pushS('az', settledAccel.t, settledAccel.az);
+  graphs.pushPoint('ax', settledAccel.t, settledAccel.ax);
+  graphs.pushPoint('ay', settledAccel.t, settledAccel.ay);
+  graphs.pushPoint('az', settledAccel.t, settledAccel.az);
 
   const accelMag = Math.hypot(settledAccel.ax, settledAccel.ay, settledAccel.az);
   track[settledAccel.trackIndex].accel = accelMag;
@@ -456,9 +411,9 @@ function confirmVelocitySample(rawSample) {
   const prevVZ = prevVI >= 0 ? SERIES.vz.v[prevVI] : null;
   const prevVT = prevVI >= 0 ? SERIES.vx.t[prevVI] : null;
 
-  pushS('vx', settledVelocity.t, settledVelocity.vx);
-  pushS('vy', settledVelocity.t, settledVelocity.vy);
-  pushS('vz', settledVelocity.t, settledVelocity.vz);
+  graphs.pushPoint('vx', settledVelocity.t, settledVelocity.vx);
+  graphs.pushPoint('vy', settledVelocity.t, settledVelocity.vy);
+  graphs.pushPoint('vz', settledVelocity.t, settledVelocity.vz);
 
   const speedMag = Math.hypot(settledVelocity.vx, settledVelocity.vy, settledVelocity.vz);
   track[settledVelocity.trackIndex].speed = speedMag;
@@ -502,7 +457,9 @@ function onPos(pos) {
   // 変位を記録し、その変化から速度・加速度を数値微分で求める
   const sx = SERIES.x;
   const prevI = sx.v.length - 1;
-  pushS('x', t, xE); pushS('y', t, yN); pushS('z', t, zU);
+  graphs.pushPoint('x', t, xE);
+  graphs.pushPoint('y', t, yN);
+  graphs.pushPoint('z', t, zU);
   track.push({ x: xE, y: yN, speed: null, accel: null });
 
   if (prevI >= 0) {
@@ -534,13 +491,8 @@ function onPos(pos) {
   }
 
   tut.tick({ totalDist, trackLength: track.length });
+  graphs.refreshVisible();
   scheduleDraw();
-}
-
-function pushS(key, t, v) {
-  const s = SERIES[key];
-  s.t.push(t); s.v.push(v);
-  document.getElementById('val-' + key).textContent = v.toFixed(s.digits) + ' ' + s.unit;
 }
 
 function onErr(e) {
@@ -571,14 +523,8 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   t0 = null;
   lat0 = null; lon0 = null; alt0 = null; lastZ = 0;
   totalDist = 0; lastPos = null;
-  KEYS.forEach(k => {
-    const s = SERIES[k];
-    s.t.length = 0; s.v.length = 0;
-    marker[k] = null;
-    document.getElementById('val-' + k).textContent = '--';
-    const c = document.getElementById('cv-' + k);
-    c.getContext('2d').clearRect(0, 0, c.width, c.height);
-  });
+  graphs.clear();
+  graphs.clearMarkers();
   document.getElementById('lat').textContent = '--';
   document.getElementById('lon').textContent = '--';
   document.getElementById('accu').innerHTML = '-- <small>m</small>';
@@ -608,7 +554,6 @@ function scheduleDraw() {
 }
 
 function draw() {
-  KEYS.forEach(k => drawGraph(document.getElementById('cv-' + k), SERIES[k], marker[k]));
   drawTrack('cv-map', 'map-span', track, 10, {
     startRing: true,
     spanUnit: 'm',
@@ -704,81 +649,6 @@ function drawTrack(cvId, spanId, pts, minSpan, opts) {
   const last = pts[pts.length - 1];
   ctx.fillStyle = '#ffe000';
   ctx.beginPath(); ctx.arc(toX(last.x), toY(last.y), 6, 0, Math.PI * 2); ctx.fill();
-}
-
-function pickTimeStep(span) {
-  const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
-  for (const s of steps) if (span / s <= 8) return s;
-  return 1200;
-}
-
-function drawGraph(cv, s, mIdx) {
-  const ctx = cv.getContext('2d');
-  const W = cv.width, H = cv.height;
-  ctx.clearRect(0, 0, W, H);
-  if (s.v.length < 2) {
-    ctx.fillStyle = '#666';
-    ctx.font = '16px sans-serif';
-    ctx.fillText('データ待ち…（GPSは数秒〜数十秒かかります）', 20, H / 2);
-    return;
-  }
-
-  const span = spanOf(s.t);
-  const stats = seriesMinMax(s.v);
-  let min = stats.min;
-  let max = stats.max;
-  const pad = Math.max((max - min) * 0.15, s.pad);
-  min -= pad; max += pad;
-  const toX = t => (t / span) * W;
-  const toY = v => H - ((v - min) / (max - min)) * H;
-
-  ctx.strokeStyle = '#2a2a2a';
-  ctx.fillStyle = '#888';
-  ctx.font = '13px sans-serif';
-  for (let i = 0; i <= 4; i++) {
-    const v = min + (max - min) * i / 4;
-    const y = toY(v);
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    ctx.fillText(v.toFixed(1), 6, Math.min(Math.max(y - 4, 14), H - 4));
-  }
-  const tStep = pickTimeStep(span);
-  for (let t = tStep; t < span; t += tStep) {
-    const x = toX(t);
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-    ctx.fillText(Math.round(t) + 's', x + 4, H - 6);
-  }
-  if (min < 0 && max > 0) {
-    const y0 = toY(0);
-    ctx.strokeStyle = '#555';
-    ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(W, y0); ctx.stroke();
-  }
-
-  ctx.strokeStyle = s.color;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  for (let i = 0; i < s.v.length; i++) {
-    const x = toX(s.t[i]);
-    const y = toY(s.v[i]);
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
-  ctx.stroke();
-
-  // タップした点の値（有効数字2桁）
-  if (mIdx !== null && mIdx < s.v.length) {
-    const x = toX(s.t[mIdx]);
-    const y = toY(s.v[mIdx]);
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
-    const label = Number(s.v[mIdx].toPrecision(2)).toString();
-    ctx.font = 'bold 16px sans-serif';
-    const tw = ctx.measureText(label).width;
-    const lx = Math.min(Math.max(x - tw / 2, 4), W - tw - 4);
-    const ly = y > 34 ? y - 14 : y + 28;
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(lx - 4, ly - 16, tw + 8, 22);
-    ctx.fillStyle = '#fff';
-    ctx.fillText(label, lx, ly);
-  }
 }
 </script>
 <script>

@@ -13,6 +13,8 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertIn('<link rel="stylesheet" href="driver.css">', source)
         self.assertIn('id="missionBtn"', source)
         self.assertIn('id="tutorialMount"', source)
+        self.assertIn('<script src="uplot.js"></script>', source)
+        self.assertIn('<script src="lab-common.js"></script>', source)
         self.assertIn('<script src="driver.js"></script>', source)
         self.assertIn('<script src="tutorial.js"></script>', source)
         self.assertIn('<script src="tour.js"></script>', source)
@@ -93,16 +95,21 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertNotIn("requestAnimationFrame(draw);", source)
         self.assertNotIn("if (watchId === null) return;", source)
 
-    def test_location_page_avoids_spread_minmax_and_draws_on_state_changes(self):
+    def test_location_page_uses_shared_time_series_graphs(self):
         source = LOCATION_SOURCE.read_text(encoding="utf-8")
 
-        self.assertIn("function seriesMinMax(values)", source)
-        self.assertIn("const stats = seriesMinMax(s.v);", source)
+        self.assertIn("const graphs = createTimeSeriesCharts({", source)
+        self.assertIn("graphs.pushPoint('x', t, xE);", source)
+        self.assertIn("graphs.pushPoint('vx', settledVelocity.t, settledVelocity.vx);", source)
+        self.assertIn("graphs.pushPoint('ax', settledAccel.t, settledAccel.ax);", source)
+        self.assertIn("graphs.clear();", source)
+        self.assertIn("graphs.clearMarkers();", source)
+        self.assertIn("graphs.refreshVisible();", source)
         self.assertIn("scheduleDraw();", source)
         self.assertIn("document.querySelectorAll('.tab').forEach(tab => {", source)
-        self.assertIn("toggleZoom(card);", source)
-        self.assertNotIn("Math.min(...s.v)", source)
-        self.assertNotIn("Math.max(...s.v)", source)
+        self.assertNotIn("function drawGraph(", source)
+        self.assertNotIn("function seriesMinMax(", source)
+        self.assertNotIn("cvEl.addEventListener('click'", source)
 
     def test_generated_location_page_has_learning_hooks(self):
         generated = LOCATION_BUILD.read_text(encoding="utf-8")
@@ -112,7 +119,10 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertIn('driver-popover', generated)
         self.assertIn('window.createTutorial', generated)
         self.assertIn('window.createOnboardingTour', generated)
+        self.assertIn('function createTimeSeriesCharts(cfg)', generated)
         self.assertNotIn('<script src="driver.js"></script>', generated)
+        self.assertNotIn('<script src="uplot.js"></script>', generated)
+        self.assertNotIn('<script src="lab-common.js"></script>', generated)
         self.assertNotIn('<script src="tutorial.js"></script>', generated)
         self.assertNotIn('<script src="tour.js"></script>', generated)
         self.assertNotIn('<link rel="stylesheet" href="driver.css">', generated)

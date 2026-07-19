@@ -353,6 +353,7 @@ document.querySelectorAll('.tab').forEach(tab => {
       c.classList.toggle('visible', c.dataset.tab === name));
     document.querySelectorAll('.values').forEach(v =>
       v.classList.toggle('visible', v.id === 'values-' + name));
+    scheduleDraw();
   });
 });
 
@@ -379,9 +380,22 @@ function nearestIndex(tArr, targetT) {
   return best;
 }
 
+function seriesMinMax(values) {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const value of values) {
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  return { min, max };
+}
+
 KEYS.forEach(key => {
   const card = document.getElementById('card-' + key);
-  card.querySelector('.head').addEventListener('click', () => toggleZoom(card));
+  card.querySelector('.head').addEventListener('click', () => {
+    toggleZoom(card);
+    scheduleDraw();
+  });
   const cvEl = document.getElementById('cv-' + key);
   cvEl.addEventListener('click', (ev) => {
     const rect = cvEl.getBoundingClientRect();
@@ -389,14 +403,22 @@ KEYS.forEach(key => {
     const cy = (ev.clientY - rect.top) / rect.height * cvEl.height;
     const s = SERIES[key];
     if (s.v.length >= 2) {
-      let min = Math.min(...s.v), max = Math.max(...s.v);
+      const stats = seriesMinMax(s.v);
+      let min = stats.min;
+      let max = stats.max;
       const pad = Math.max((max - min) * 0.15, s.pad);
       min -= pad; max += pad;
       const i = nearestIndex(s.t, cx / cvEl.width * spanOf(s.t));
       const ly = cvEl.height - ((s.v[i] - min) / (max - min)) * cvEl.height;
-      if (Math.abs(cy - ly) < HIT_PX) { marker[key] = i; tut.event('marker'); return; }   // 線の上→値
+      if (Math.abs(cy - ly) < HIT_PX) {
+        marker[key] = i;
+        tut.event('marker');
+        scheduleDraw();
+        return;
+      }   // 線の上→値
     }
     toggleZoom(card);                                                // 線の外→拡大/縮小
+    scheduleDraw();
     if (document.body.classList.contains('zoom')) tut.event('zoomed');
   });
 });
@@ -512,6 +534,7 @@ function onPos(pos) {
   }
 
   tut.tick({ totalDist, trackLength: track.length });
+  scheduleDraw();
 }
 
 function pushS(key, t, v) {
@@ -571,6 +594,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     const c = document.getElementById(cvId);
     c.getContext('2d').clearRect(0, 0, c.width, c.height);
   });
+  scheduleDraw();
 });
 
 // ---- 描画（phyphox方式：時間軸を圧縮して全履歴を表示） ----
@@ -700,7 +724,9 @@ function drawGraph(cv, s, mIdx) {
   }
 
   const span = spanOf(s.t);
-  let min = Math.min(...s.v), max = Math.max(...s.v);
+  const stats = seriesMinMax(s.v);
+  let min = stats.min;
+  let max = stats.max;
   const pad = Math.max((max - min) * 0.15, s.pad);
   min -= pad; max += pad;
   const toX = t => (t / span) * W;

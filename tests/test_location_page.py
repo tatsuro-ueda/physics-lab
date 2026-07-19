@@ -93,6 +93,17 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertNotIn("requestAnimationFrame(draw);", source)
         self.assertNotIn("if (watchId === null) return;", source)
 
+    def test_location_page_avoids_spread_minmax_and_draws_on_state_changes(self):
+        source = LOCATION_SOURCE.read_text(encoding="utf-8")
+
+        self.assertIn("function seriesMinMax(values)", source)
+        self.assertIn("const stats = seriesMinMax(s.v);", source)
+        self.assertIn("scheduleDraw();", source)
+        self.assertIn("document.querySelectorAll('.tab').forEach(tab => {", source)
+        self.assertIn("toggleZoom(card);", source)
+        self.assertNotIn("Math.min(...s.v)", source)
+        self.assertNotIn("Math.max(...s.v)", source)
+
     def test_generated_location_page_has_learning_hooks(self):
         generated = LOCATION_BUILD.read_text(encoding="utf-8")
 

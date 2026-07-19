@@ -110,7 +110,7 @@
 
 <div id="tutorialMount"></div>   <!-- 🔰チュートリアルのパネルはここに tutorial.js が差し込む -->
 
-<div id="time">0.00</div>
+<div id="time">0.000</div>
 <div id="state">「開始」を押すと、音を待ちます</div>
 
 <button id="btn">開始（音を待つ）</button>
@@ -381,6 +381,10 @@ let laps = [];           // 各区間の時間（paused に切り替わるたび
 
 function echoTime() { return parseFloat(echoSlider.value); }
 
+function formatSeconds(sec) {
+  return sec.toFixed(3);
+}
+
 function updateThUI() {
   thVal.textContent = thSlider.value;
   thMark.style.left = (parseFloat(thSlider.value) * 100) + '%';
@@ -462,7 +466,7 @@ function clearAll() {
   accum = 0;
   laps = [];
   historyEl.textContent = '';
-  timeEl.textContent = '0.00';
+  timeEl.textContent = '0.000';
 }
 
 function setIdle() {
@@ -484,7 +488,7 @@ function setPausedState() {
 function updateHistory() {
   if (!laps.length) { historyEl.textContent = ''; return; }
   historyEl.innerHTML = '記録：' +
-    laps.map((r, i) => '区間' + (i + 1) + ' ' + r.toFixed(2) + ' 秒').join('、 ');
+    laps.map((r, i) => '区間' + (i + 1) + ' ' + formatSeconds(r) + ' 秒').join('、 ');
 }
 
 function loop() {
@@ -516,7 +520,7 @@ function loop() {
     const lap = now - segmentStart;
     accum += lap;
     laps.push(lap);
-    timeEl.textContent = accum.toFixed(2);
+    timeEl.textContent = formatSeconds(accum);
     updateHistory();
     releaseAudio();
     setPausedState();
@@ -524,7 +528,7 @@ function loop() {
   }
 
   if (mode === 'running') {
-    timeEl.textContent = (accum + (now - segmentStart)).toFixed(2);
+    timeEl.textContent = formatSeconds(accum + (now - segmentStart));
   }
 }
 

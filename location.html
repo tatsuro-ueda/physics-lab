@@ -232,7 +232,7 @@
   <p class="hint" id="hint">
     変位＝開始地点からの移動<br>
     <span class="hint-plain"><b>グラフをタップ</b>＝拡大</span>
-    <span class="hint-zoom"><b>線をタップ</b>＝値、<b>まわりをタップ</b>＝縮小</span>
+    <span class="hint-zoom"><b>2本指</b>で拡大縮小<br><b>1本指</b>で移動<br><b>線をタップ</b>して値を読む<br><b>線から離れてタップ</b>して戻る</span>
   </p>
 </main>
 
@@ -409,12 +409,26 @@ function createTimeSeriesCharts(cfg) {
     KEYS.forEach(syncPlot);
   }
 
+  function refreshVisible() {
+    updateViewFollow();
+    visibleKeys().forEach(syncPlot);
+  }
+
   function scheduleZoomRefresh() {
     setTimeout(() => refreshVisible(), 60);
   }
 
   function clearCursor(plot) {
     plot.setCursor({ left: -10, top: -10 });
+  }
+
+  function clearMarkers() {
+    hasMarker = false;
+    KEYS.forEach((key) => {
+      if (tips[key]) tips[key].classList.remove('show');
+      if (uplots[key]) clearCursor(uplots[key]);
+      setLatestValue(key);
+    });
   }
 
   function setupChart(key) {
@@ -515,7 +529,7 @@ function createTimeSeriesCharts(cfg) {
     const cache = new Map();
     let prevDist = 0;
     let panPrevX = 0;
-    let lastTapTime = 0;
+    let panPrevY = 0;
     let tapStart = null;
     const TAP_SLOP_PX = 8;
 
@@ -524,18 +538,15 @@ function createTimeSeriesCharts(cfg) {
       try { el.setPointerCapture(e.pointerId); } catch (_) {}
       if (cache.size === 2) {
         const pts = Array.from(cache.values());
-        prevDist = Math.abs(pts[1].clientX - pts[0].clientX);
+        prevDist = Math.hypot(
+          pts[1].clientX - pts[0].clientX,
+          pts[1].clientY - pts[0].clientY,
+        );
         tapStart = null;
       } else if (cache.size === 1) {
         panPrevX = e.clientX;
+        panPrevY = e.clientY;
         tapStart = { t: performance.now(), x: e.clientX, y: e.clientY };
-        const now = performance.now();
-        if (now - lastTapTime < 300) {
-          viewT.autoFollow = true;
-          KEYS.forEach((name) => { viewV[name].autoScale = true; });
-          refreshVisible();
-        }
-        lastTapTime = now;
       }
     });
 
@@ -554,6 +565,7 @@ function createTimeSeriesCharts(cfg) {
         const centerX = (pts[0].clientX + pts[1].clientX) / 2;
         const centerY = (pts[0].clientY + pts[1].clientY) / 2;
         if (prevDist > 5 && dist > 5) {
+          let changed = false;
           const scale = dist / prevDist;
           const tc = viewT.min + (centerX - rect.left) / rect.width * (viewT.max - viewT.min);
           const newMin = tc - (tc - viewT.min) / scale;
@@ -563,6 +575,7 @@ function createTimeSeriesCharts(cfg) {
             viewT.max = newMax;
             viewT.autoFollow = false;
             applyTimeScale(visibleKeys());
+            changed = true;
           }
           const yScale = plot.scales.y;
           if (Number.isFinite(yScale.min) && Number.isFinite(yScale.max) && yScale.max > yScale.min) {
@@ -574,29 +587,47 @@ function createTimeSeriesCharts(cfg) {
               viewV[key].min = newYMin;
               viewV[key].max = newYMax;
               plot.setScale('y', { min: newYMin, max: newYMax });
+              changed = true;
             }
           }
+          if (changed && cfg.onPinch) cfg.onPinch({ key });
         }
         prevDist = dist;
       } else if (cache.size === 1) {
         const zoomed = document.body.classList.contains('zoom');
         if (!zoomed) return;
         const dx = e.clientX - panPrevX;
+        const dy = e.clientY - panPrevY;
         if (tapStart && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) < TAP_SLOP_PX) return;
-        if (Math.abs(dx) < 2) return;
+        if (Math.hypot(dx, dy) < 2) return;
         panPrevX = e.clientX;
+        panPrevY = e.clientY;
         tapStart = null;
         const dt = -dx / rect.width * (viewT.max - viewT.min);
         viewT.min += dt;
         viewT.max += dt;
         viewT.autoFollow = false;
         applyTimeScale(visibleKeys());
+        const yScale = plot.scales.y;
+        if (Number.isFinite(yScale.min) && Number.isFinite(yScale.max) && yScale.max > yScale.min) {
+          const dv = dy / rect.height * (yScale.max - yScale.min);
+          viewV[key].autoScale = false;
+          viewV[key].min = yScale.min + dv;
+          viewV[key].max = yScale.max + dv;
+          plot.setScale('y', { min: viewV[key].min, max: viewV[key].max });
+        }
+        if (cfg.onPan) cfg.onPan({ key });
       }
     });
 
     const endPointer = (e) => {
       cache.delete(e.pointerId);
       if (cache.size < 2) prevDist = 0;
+      if (cache.size === 1) {
+        const remaining = Array.from(cache.values())[0];
+        panPrevX = remaining.clientX;
+        panPrevY = remaining.clientY;
+      }
       if (tapStart && performance.now() - tapStart.t < 300 && cache.size === 0) {
         const zoomed = document.body.classList.contains('zoom');
         if (!zoomed) {
@@ -679,21 +710,9 @@ function createTimeSeriesCharts(cfg) {
       hasMarker = false;
       refreshAll();
     },
-    clearMarkers: () => {
-      hasMarker = false;
-      KEYS.forEach((key) => {
-        if (tips[key]) tips[key].classList.remove('show');
-        if (uplots[key]) clearCursor(uplots[key]);
-        setLatestValue(key);
-      });
-    },
-    refreshVisible: () => {
-      updateViewFollow();
-      visibleKeys().forEach(syncPlot);
-    },
-    refreshAll: () => {
-      refreshAll();
-    },
+    clearMarkers,
+    refreshVisible,
+    refreshAll,
     hasMarker: () => hasMarker,
     isZoomed: () => document.body.classList.contains('zoom'),
   };
@@ -739,6 +758,8 @@ function createXYZLab(cfg) {
     series,
     getVisibleKeys: () => activeKeys(),
     defaultHeight: '180px',
+    onPan: cfg.onPan,
+    onPinch: cfg.onPinch,
   });
 
   const playBtn = document.getElementById('playBtn');
@@ -1237,6 +1258,26 @@ const tut = createTutorial({
       html: () => '地図で、どちらへ動いたか見てみよう',
       observe: true,
     }),
+    () => ({
+      html: () => 'グラフをタップして拡大してみよう',
+      on: 'zoomed',
+    }),
+    () => ({
+      html: () => '2本指でグラフを拡大縮小しよう',
+      on: 'pinched',
+    }),
+    () => ({
+      html: () => '1本指でグラフを動かそう',
+      on: 'panned',
+    }),
+    () => ({
+      html: () => '線をタップして値を読んでみよう',
+      on: 'marker',
+    }),
+    () => ({
+      html: () => '線から離れてタップして元に戻そう',
+      on: 'restored',
+    }),
   ],
   moreSteps: [
     () => ({
@@ -1263,8 +1304,11 @@ const graphs = createTimeSeriesCharts({
   noDataText: 'データ待ち…（GPSは数秒〜数十秒かかります）',
   onZoomChange: ({ zoomed }) => {
     if (zoomed) tut.event('zoomed');
+    else tut.event('restored');
     scheduleDraw();
   },
+  onPan: () => tut.event('panned'),
+  onPinch: () => tut.event('pinched'),
   onMarker: () => {
     tut.event('marker');
   },

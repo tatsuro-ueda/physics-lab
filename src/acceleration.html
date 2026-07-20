@@ -129,7 +129,7 @@
   </div>
 
   <p id="err"></p>
-  <p class="hint" id="hint"><span class="hint-plain"><b>▶で計測</b>、<b>⏸で止める</b>、<b>グラフをタップ</b>＝拡大</span><span class="hint-zoom"><b>2本指</b>＝拡大、<b>1本指</b>＝移動、<b>線をタップ</b>＝値、<b>まわりをタップ</b>＝縮小</span></p>
+  <p class="hint" id="hint"><span class="hint-plain"><b>▶で計測</b>。<b>⏸で止める</b>。<b>グラフをタップ</b>して拡大。</span><span class="hint-zoom"><b>2本指</b>で拡大縮小<br><b>1本指</b>で移動<br><b>線をタップ</b>して値を読む<br><b>線から離れてタップ</b>して戻る</span></p>
 </main>
 
 <script src="uplot.js"></script>
@@ -152,6 +152,8 @@ const lab = createXYZLab({
   digits: 1,        // ヘッダー現在値は小数1桁
   padMin: 0.5,
   noDataMsg: 'この端末では加速度センサーのデータが取れないようです（センサー非搭載の可能性）',
+  onPan: () => tut.event('panned'),
+  onPinch: () => tut.event('pinched'),
   start: async (lab) => {
     if (typeof DeviceMotionEvent !== 'undefined' &&
         typeof DeviceMotionEvent.requestPermission === 'function') {
@@ -213,7 +215,7 @@ function makeAxisStep(api, dirs, startIdx) {
       let hit = null;
       if (Math.abs(v.x) > 3) hit = 'x'; else if (Math.abs(v.y) > 3) hit = 'y'; else if (Math.abs(v.z) > 2.5) hit = 'z';
       if (!hit) return false;
-      if (hit === guess) { api.note('正解！動いたのは ' + hit + ' でした' + TUT_ICONS.check); return true; }
+      if (hit === guess) { api.note('正解！動いたのは ' + hit + ' でした'); return true; }
       di = (di + 1) % dirs.length; guess = null; api.markGuess(null);
       api.setQuestion(q());
       api.note('ちがったね（実測 ' + hit + '）。今度は「' + label() + '」で予想しよう');
@@ -264,10 +266,12 @@ const STEPS = [
   },
   (api) => makeAxisStep(api, TUT_DIRS, 0),
   (api) => makePeakStep(api),
-  () => ({ html: () => 'グラフの線から はなれた場所をタップして、拡大してみよう', tick: () => lab.isZoomed() }),
   () => ({ html: () => TUT_ICONS.pause + ' を押して、グラフを止めよう', tick: () => !lab.isRunning() }),
+  () => ({ html: () => 'グラフの線から はなれた場所をタップして、拡大してみよう', tick: () => lab.isZoomed() }),
+  () => ({ html: () => '2本指でグラフを拡大縮小しよう', on: 'pinched' }),
+  () => ({ html: () => '1本指でグラフを動かそう', on: 'panned' }),
   () => ({ html: () => '線の上をタップして、その点の値を読もう', tick: () => lab.hasMarker() }),
-  () => ({ html: () => 'グラフをもう一度タップして、元の大きさに戻そう', tick: () => !lab.isZoomed() }),
+  () => ({ html: () => '線から離れたところをタップして、元の大きさに戻そう', tick: () => !lab.isZoomed() }),
 ];
 
 const MORE_DIRS = [

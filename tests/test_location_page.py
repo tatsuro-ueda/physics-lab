@@ -31,8 +31,37 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertIn("tut.event('started')", source)
         self.assertIn("tut.event('zoomed')", source)
         self.assertIn("tut.event('marker')", source)
+        self.assertIn("tut.event('pinched')", source)
+        self.assertIn("tut.event('panned')", source)
         self.assertIn("tut.tick({ totalDist, trackLength: track.length })", source)
         self.assertNotIn("trackLength >= 3", source)
+
+    def test_location_tutorial_requires_shared_graph_gestures(self):
+        source = LOCATION_SOURCE.read_text(encoding="utf-8")
+
+        steps = [
+            "グラフをタップして拡大してみよう",
+            "2本指でグラフを拡大縮小しよう",
+            "1本指でグラフを動かそう",
+            "線をタップして値を読んでみよう",
+            "線から離れてタップして元に戻そう",
+        ]
+        missing = [step for step in steps if step not in source]
+        self.assertFalse(missing, f"missing tutorial steps: {missing}")
+        positions = [source.index(step) for step in steps]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("on: 'pinched'", source)
+        self.assertIn("on: 'panned'", source)
+        self.assertIn("onPan: () => tut.event('panned')", source)
+        self.assertIn("onPinch: () => tut.event('pinched')", source)
+
+    def test_location_zoom_hint_matches_acceleration(self):
+        source = LOCATION_SOURCE.read_text(encoding="utf-8")
+
+        self.assertIn("<b>2本指</b>で拡大縮小", source)
+        self.assertIn("<b>1本指</b>で移動", source)
+        self.assertIn("<b>線をタップ</b>して値を読む", source)
+        self.assertIn("<b>線から離れてタップ</b>して戻る", source)
 
     def test_location_page_uses_position_based_route_maps(self):
         source = LOCATION_SOURCE.read_text(encoding="utf-8")

@@ -271,7 +271,7 @@ function injectLabUplotStyle() {
     '.u-cursor-pt{position:absolute;top:0;left:0;border-radius:50%;border:0 solid;pointer-events:none;will-change:transform;background-clip:padding-box!important}' +
     '.u-select{background:rgba(255,224,0,0.15);position:absolute;pointer-events:none}' +
     '.u-axis.u-off,.u-select.u-off,.u-cursor-x.u-off,.u-cursor-y.u-off,.u-cursor-pt.u-off{display:none}' +
-    '.uplot-mount{width:100%;height:180px;background:#000;position:relative;touch-action:none}' +
+    '.uplot-mount{width:100%;height:var(--lab-plot-height,180px);background:#000;position:relative;touch-action:none}' +
     'body.zoom .card.zoomed .uplot-mount{height:60vh}' +
     '.lab-tip{position:absolute;pointer-events:none;background:rgba(0,0,0,0.85);color:#fff;' +
     'font:bold 13px system-ui,sans-serif;padding:3px 7px;border-radius:4px;' +
@@ -409,6 +409,10 @@ function createTimeSeriesCharts(cfg) {
     KEYS.forEach(syncPlot);
   }
 
+  function scheduleZoomRefresh() {
+    setTimeout(() => refreshVisible(), 60);
+  }
+
   function clearCursor(plot) {
     plot.setCursor({ left: -10, top: -10 });
   }
@@ -420,7 +424,7 @@ function createTimeSeriesCharts(cfg) {
     const mount = document.createElement('div');
     mount.className = 'uplot-mount';
     mount.id = 'cv-' + key;
-    mount.style.height = oldCanvas && oldCanvas.style.height ? oldCanvas.style.height : defaultHeight;
+    mount.style.setProperty('--lab-plot-height', oldCanvas && oldCanvas.style.height ? oldCanvas.style.height : defaultHeight);
     if (oldCanvas) oldCanvas.replaceWith(mount);
     else card.appendChild(mount);
     mounts[key] = mount;
@@ -504,18 +508,6 @@ function createTimeSeriesCharts(cfg) {
 
     attachInteractions(mount, key, card);
 
-    if (cfg.enableHeadToggle) {
-      const head = card.querySelector('.head');
-      if (head) {
-        head.addEventListener('click', () => {
-          const zoomed = toggleCardZoom(card);
-          clearMarkers();
-          refreshVisible();
-          if (cfg.onZoomChange) cfg.onZoomChange({ key, zoomed });
-        });
-      }
-    }
-
     setTimeout(() => resizePlot(key), 30);
   }
 
@@ -525,6 +517,7 @@ function createTimeSeriesCharts(cfg) {
     let panPrevX = 0;
     let lastTapTime = 0;
     let tapStart = null;
+    const TAP_SLOP_PX = 8;
 
     el.addEventListener('pointerdown', (e) => {
       cache.set(e.pointerId, e);
@@ -554,9 +547,12 @@ function createTimeSeriesCharts(cfg) {
       const rect = el.getBoundingClientRect();
 
       if (cache.size === 2) {
+        const zoomed = document.body.classList.contains('zoom');
+        if (!zoomed) return;
         const pts = Array.from(cache.values());
-        const dist = Math.abs(pts[1].clientX - pts[0].clientX);
+        const dist = Math.hypot(pts[1].clientX - pts[0].clientX, pts[1].clientY - pts[0].clientY);
         const centerX = (pts[0].clientX + pts[1].clientX) / 2;
+        const centerY = (pts[0].clientY + pts[1].clientY) / 2;
         if (prevDist > 5 && dist > 5) {
           const scale = dist / prevDist;
           const tc = viewT.min + (centerX - rect.left) / rect.width * (viewT.max - viewT.min);
@@ -568,10 +564,25 @@ function createTimeSeriesCharts(cfg) {
             viewT.autoFollow = false;
             applyTimeScale(visibleKeys());
           }
+          const yScale = plot.scales.y;
+          if (Number.isFinite(yScale.min) && Number.isFinite(yScale.max) && yScale.max > yScale.min) {
+            const vc = yScale.max - (centerY - rect.top) / rect.height * (yScale.max - yScale.min);
+            const newYMin = vc - (vc - yScale.min) / scale;
+            const newYMax = vc + (yScale.max - vc) / scale;
+            if (newYMax - newYMin > 1e-9) {
+              viewV[key].autoScale = false;
+              viewV[key].min = newYMin;
+              viewV[key].max = newYMax;
+              plot.setScale('y', { min: newYMin, max: newYMax });
+            }
+          }
         }
         prevDist = dist;
       } else if (cache.size === 1) {
+        const zoomed = document.body.classList.contains('zoom');
+        if (!zoomed) return;
         const dx = e.clientX - panPrevX;
+        if (tapStart && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) < TAP_SLOP_PX) return;
         if (Math.abs(dx) < 2) return;
         panPrevX = e.clientX;
         tapStart = null;
@@ -592,6 +603,7 @@ function createTimeSeriesCharts(cfg) {
           const nextZoom = toggleCardZoom(card);
           clearMarkers();
           refreshVisible();
+          scheduleZoomRefresh();
           if (cfg.onZoomChange) cfg.onZoomChange({ key, zoomed: nextZoom });
         } else {
           const plot = uplots[key];
@@ -629,6 +641,7 @@ function createTimeSeriesCharts(cfg) {
             const nextZoom = toggleCardZoom(card);
             clearMarkers();
             refreshVisible();
+            scheduleZoomRefresh();
             if (cfg.onZoomChange) cfg.onZoomChange({ key, zoomed: nextZoom });
           }
         }

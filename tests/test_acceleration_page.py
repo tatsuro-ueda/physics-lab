@@ -14,6 +14,7 @@ class AccelerationPageCopyTest(unittest.TestCase):
         self.assertIn("<b>▶で計測</b>。<b>⏸で止める</b>。<b>グラフをタップ</b>して拡大。", source)
         self.assertIn("<b>2本指</b>で拡大縮小", source)
         self.assertIn("<b>1本指</b>で移動", source)
+        self.assertIn("<b>⏸で止めてから</b>", source)
         self.assertIn("<b>線をタップ</b>して値を読む", source)
         self.assertIn("<b>線から離れてタップ</b>して戻る", source)
         self.assertIn("グラフの線から はなれた場所をタップして、拡大してみよう", source)
@@ -52,6 +53,7 @@ class AccelerationPageCopyTest(unittest.TestCase):
         self.assertIn("<b>▶で計測</b>。<b>⏸で止める</b>。<b>グラフをタップ</b>して拡大。", generated)
         self.assertIn("<b>2本指</b>で拡大縮小", generated)
         self.assertIn("<b>1本指</b>で移動", generated)
+        self.assertIn("<b>⏸で止めてから</b>", generated)
 
 
 if __name__ == "__main__":

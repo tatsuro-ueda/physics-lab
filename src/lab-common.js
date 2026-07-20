@@ -176,6 +176,10 @@ function createTimeSeriesCharts(cfg) {
     plot.setCursor({ left: -10, top: -10 });
   }
 
+  function canReadValue() {
+    return !cfg.canReadValue || cfg.canReadValue();
+  }
+
   function clearMarkers() {
     hasMarker = false;
     KEYS.forEach((key) => {
@@ -239,7 +243,7 @@ function createTimeSeriesCharts(cfg) {
           const tip = tips[key];
           const idx = u.cursor.idx;
           const zoomed = document.body.classList.contains('zoom');
-          if (!zoomed || idx == null || u.data[1][idx] == null) {
+          if (!canReadValue() || !zoomed || idx == null || u.data[1][idx] == null) {
             if (tip) tip.classList.remove('show');
             setLatestValue(key);
             return;
@@ -414,10 +418,12 @@ function createTimeSeriesCharts(cfg) {
               const dist = Math.hypot(tapX - ptX, tapY - ptY);
               if (dist < 30) {
                 onLine = true;
-                hasMarker = true;
-                plot.setCursor({ left: ptX, top: ptY });
-                if (cfg.onMarker) {
-                  cfg.onMarker({ key, idx, t: series[key].t[idx], v: value });
+                if (canReadValue()) {
+                  hasMarker = true;
+                  plot.setCursor({ left: ptX, top: ptY });
+                  if (cfg.onMarker) {
+                    cfg.onMarker({ key, idx, t: series[key].t[idx], v: value });
+                  }
                 }
               }
             }
@@ -514,6 +520,7 @@ function createXYZLab(cfg) {
     defaultHeight: '180px',
     onPan: cfg.onPan,
     onPinch: cfg.onPinch,
+    canReadValue: () => !running,
   });
 
   const playBtn = document.getElementById('playBtn');
@@ -546,6 +553,7 @@ function createXYZLab(cfg) {
       }, 3000);
     }
     if (series.x.t.length) t0 = performance.now() / 1000 - series.x.t[series.x.t.length - 1];
+    graphs.clearMarkers();
     running = true;
     errEl.textContent = '';
     setPlayIcon(true);

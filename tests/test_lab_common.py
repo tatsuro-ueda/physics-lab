@@ -35,6 +35,27 @@ class TutorialMarkerProgressTest(unittest.TestCase):
         )
         self.assertRegex(source, r"hasMarker:\s*\(\)\s*=>\s*hasMarker")
 
+    def test_marker_values_are_only_created_when_value_reading_is_allowed(self):
+        source = LAB_COMMON.read_text(encoding="utf-8")
+
+        self.assertIn("onLine = true;", source)
+        self.assertIn("function canReadValue() {", source)
+        self.assertIn("return !cfg.canReadValue || cfg.canReadValue();", source)
+        self.assertIn("if (!canReadValue() || !zoomed", source)
+        self.assertIn("if (canReadValue()) {", source)
+        self.assertRegex(
+            source,
+            re.compile(
+                r"if \(dist < 30\) \{\s*onLine = true;\s*if \(canReadValue\(\)\) \{.*?hasMarker = true;.*?if \(cfg\.onMarker\)",
+                re.DOTALL,
+            ),
+        )
+        self.assertIn("canReadValue: () => !running,", source)
+        self.assertRegex(
+            source,
+            re.compile(r"graphs\.clearMarkers\(\);\s*running = true;", re.DOTALL),
+        )
+
     def test_single_pointer_move_does_not_cancel_tap_before_zoom(self):
         source = LAB_COMMON.read_text(encoding="utf-8")
 
@@ -113,6 +134,15 @@ class TutorialMarkerProgressTest(unittest.TestCase):
                 self.assertNotIn('<script src="lab-common.js"></script>', generated)
                 self.assertIn("if (cfg.onPan) cfg.onPan({ key });", generated)
                 self.assertIn("cfg.onPinch({ key });", generated)
+                self.assertIn("if (!canReadValue() || !zoomed", generated)
+                self.assertIn("if (canReadValue()) {", generated)
+
+    def test_sensor_page_hints_require_pause_before_reading_a_value(self):
+        for page_name in ("gyroscope.html", "magnetometer.html"):
+            with self.subTest(page=page_name):
+                source = (ROOT / "src" / page_name).read_text(encoding="utf-8")
+                self.assertIn("⏸で止めてから", source)
+                self.assertNotIn("止めると読みやすい", source)
 
 
 if __name__ == "__main__":

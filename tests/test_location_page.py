@@ -45,6 +45,24 @@ class LocationPageSourceTest(unittest.TestCase):
         self.assertNotIn("pts.map((p) => p[opts.metricKey]).filter((v) => Number.isFinite(v))", source)
         self.assertNotIn("Math.max(...metricValues)", source)
 
+    def test_location_time_series_cards_match_acceleration_style(self):
+        source = LOCATION_SOURCE.read_text(encoding="utf-8")
+
+        self.assertIn('class="card graph-card visible" id="card-x"', source)
+        self.assertIn('class="card graph-card" id="card-vx"', source)
+        self.assertIn('class="card graph-card" id="card-ax"', source)
+        self.assertIn('class="card map-card visible" id="card-map"', source)
+        self.assertIn('class="card map-card" id="card-vmap"', source)
+        self.assertIn('class="card map-card" id="card-amap"', source)
+        self.assertIn(".graph-card {", source)
+        self.assertIn("position: relative;", source)
+        self.assertIn("border-radius: 14px;", source)
+        self.assertIn("background: #181818;", source)
+        self.assertIn(".graph-card .head {", source)
+        self.assertIn("pointer-events: none;", source)
+        self.assertIn("body.zoom .graph-card { display: none; }", source)
+        self.assertIn("body.zoom .graph-card.zoomed { display: block; }", source)
+
     def test_location_page_has_actionable_status_and_error_copy(self):
         source = LOCATION_SOURCE.read_text(encoding="utf-8")
 

@@ -6,7 +6,7 @@
 <title>位置（GPS） | タブレット物理実験ラボ</title>
 <link rel="stylesheet" href="driver.css">
 <style>
-  :root { --phx-orange: #ffe000; --ax-x: #ff9500; --ax-y: #d4c400; --ax-z: #e04040; }
+  :root { --phx-orange: #ffe000; --ax-x: #4C8DF0; --ax-y: #4FC96B; --ax-z: #F2C744; }
   /* 既存CSSは残しつつ、このTaskでは共有アセット導線だけ通す */
   * { box-sizing: border-box; }
   body {
@@ -81,11 +81,13 @@
     border: 1px solid #333;
     border-radius: 4px;
     overflow: hidden;
-    cursor: pointer;
     display: none;
   }
   .card.visible { display: block; }
-  .card .head {
+  .map-card {
+    cursor: default;
+  }
+  .map-card .head {
     background: #2b2b2b;
     text-align: center;
     font-size: 0.9rem;
@@ -93,12 +95,37 @@
     justify-content: space-between;
     padding: 5px 10px;
   }
-  .card .val { font-variant-numeric: tabular-nums; color: #bbb; }
-  .card canvas { display: block; width: 100%; height: 150px; background: #000; }
+  .map-card .val { font-variant-numeric: tabular-nums; color: #bbb; }
+  .map-card canvas { display: block; width: 100%; height: 150px; background: #000; }
+  .graph-card {
+    position: relative;
+    margin-bottom: 12px;
+    border: 1px solid #3a3a3a;
+    border-radius: 14px;
+    background: #181818;
+    overflow: hidden;
+    cursor: pointer;
+    padding: 5px;
+  }
+  .graph-card .head {
+    position: absolute;
+    top: 11px;
+    left: 16px;
+    right: 16px;
+    z-index: 2;
+    pointer-events: none;
+    background: none;
+    font-size: 1rem;
+    display: flex;
+    justify-content: space-between;
+  }
+  .graph-card .val { font-variant-numeric: tabular-nums; color: #bbb; }
+  .graph-card canvas { display: block; width: 100%; height: 150px; background: #000; }
   body.zoom .card { display: none; }
   body.zoom .card.zoomed { display: block; }
-  body.zoom .card.zoomed canvas { height: 60vh; }
-  body.zoom .card.zoomed .head { font-size: 1.1rem; }
+  body.zoom .graph-card { display: none; }
+  body.zoom .graph-card.zoomed { display: block; }
+  body.zoom .graph-card.zoomed .head { font-size: 1.1rem; }
   .status-note { text-align: center; color: #bbb; font-size: 0.9rem; margin: 8px 0 12px; }
   .hint { text-align: center; color: #888; font-size: 0.8rem; margin: 12px 0; }
   .hint .hint-zoom { display: none; }
@@ -144,57 +171,57 @@
   </div>
 
   <!-- 位置タブ：変位（計測開始地点からの移動量 m） -->
-  <div class="card visible" id="card-x" data-tab="pos">
+  <div class="card graph-card visible" id="card-x" data-tab="pos">
     <div class="head"><span style="color:var(--ax-x)">変位 X（アプリでは東を正）</span><span class="val" id="val-x">--</span></div>
     <canvas id="cv-x" width="720" height="300"></canvas>
   </div>
-  <div class="card visible" id="card-y" data-tab="pos">
+  <div class="card graph-card visible" id="card-y" data-tab="pos">
     <div class="head"><span style="color:var(--ax-y)">変位 Y（アプリでは北を正）</span><span class="val" id="val-y">--</span></div>
     <canvas id="cv-y" width="720" height="300"></canvas>
   </div>
-  <div class="card visible" id="card-z" data-tab="pos">
+  <div class="card graph-card visible" id="card-z" data-tab="pos">
     <div class="head"><span style="color:var(--ax-z)">変位 Z（アプリでは鉛直上向きを正）</span><span class="val" id="val-z">--</span></div>
     <canvas id="cv-z" width="720" height="300"></canvas>
   </div>
 
   <!-- 移動のようす（自前描画のトラック地図。外部ライブラリ・ネット接続なしで動く） -->
-  <div class="card visible" id="card-map" data-tab="pos">
+  <div class="card map-card visible" id="card-map" data-tab="pos">
     <div class="head"><span style="color:#a8c26a">移動のようす（北が上）</span><span class="val" id="map-span"></span></div>
     <canvas id="cv-map" width="720" height="400" style="height:200px"></canvas>
   </div>
 
   <!-- 速度タブ：変位の変化から計算 -->
-  <div class="card" id="card-vx" data-tab="spd">
+  <div class="card graph-card" id="card-vx" data-tab="spd">
     <div class="head"><span style="color:var(--ax-x)">速度 X（アプリでは東を正）</span><span class="val" id="val-vx">--</span></div>
     <canvas id="cv-vx" width="720" height="300"></canvas>
   </div>
-  <div class="card" id="card-vy" data-tab="spd">
+  <div class="card graph-card" id="card-vy" data-tab="spd">
     <div class="head"><span style="color:var(--ax-y)">速度 Y（アプリでは北を正）</span><span class="val" id="val-vy">--</span></div>
     <canvas id="cv-vy" width="720" height="300"></canvas>
   </div>
-  <div class="card" id="card-vz" data-tab="spd">
+  <div class="card graph-card" id="card-vz" data-tab="spd">
     <div class="head"><span style="color:var(--ax-z)">速度 Z（アプリでは鉛直上向きを正）</span><span class="val" id="val-vz">--</span></div>
     <canvas id="cv-vz" width="720" height="300"></canvas>
   </div>
-  <div class="card" id="card-vmap" data-tab="spd">
+  <div class="card map-card" id="card-vmap" data-tab="spd">
     <div class="head"><span style="color:#a8c26a">速度のようす（北が上・速い所を強調）</span><span class="val" id="vmap-span"></span></div>
     <canvas id="cv-vmap" width="720" height="400" style="height:200px"></canvas>
   </div>
 
   <!-- 加速度タブ：速度の変化から計算 -->
-  <div class="card" id="card-ax" data-tab="acc">
+  <div class="card graph-card" id="card-ax" data-tab="acc">
     <div class="head"><span style="color:var(--ax-x)">加速度 X（アプリでは東を正）</span><span class="val" id="val-ax">--</span></div>
     <canvas id="cv-ax" width="720" height="300"></canvas>
   </div>
-  <div class="card" id="card-ay" data-tab="acc">
+  <div class="card graph-card" id="card-ay" data-tab="acc">
     <div class="head"><span style="color:var(--ax-y)">加速度 Y（アプリでは北を正）</span><span class="val" id="val-ay">--</span></div>
     <canvas id="cv-ay" width="720" height="300"></canvas>
   </div>
-  <div class="card" id="card-az" data-tab="acc">
+  <div class="card graph-card" id="card-az" data-tab="acc">
     <div class="head"><span style="color:var(--ax-z)">加速度 Z（アプリでは鉛直上向きを正）</span><span class="val" id="val-az">--</span></div>
     <canvas id="cv-az" width="720" height="300"></canvas>
   </div>
-  <div class="card" id="card-amap" data-tab="acc">
+  <div class="card map-card" id="card-amap" data-tab="acc">
     <div class="head"><span style="color:#a8c26a">加速度のようす（北が上・変化が大きい所を強調）</span><span class="val" id="amap-span"></span></div>
     <canvas id="cv-amap" width="720" height="400" style="height:200px"></canvas>
   </div>
@@ -351,7 +378,6 @@ const graphs = createTimeSeriesCharts({
   },
   defaultHeight: '150px',
   noDataText: 'データ待ち…（GPSは数秒〜数十秒かかります）',
-  enableHeadToggle: true,
   onZoomChange: ({ zoomed }) => {
     if (zoomed) tut.event('zoomed');
     scheduleDraw();

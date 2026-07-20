@@ -1,4 +1,6 @@
+import json
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -13,7 +15,50 @@ GENERATED_GRAPH_PAGES = (
 )
 
 
+def extract_graph_tap_helpers() -> str:
+    source = LAB_COMMON.read_text(encoding="utf-8")
+    marker = "// ---- graph tap hit testing ----"
+    if marker not in source:
+        return ""
+    start = source.index(marker)
+    end = source.index("function injectLabUplotStyle()", start)
+    return source[start:end]
+
+
+def run_graph_tap_script(script: str) -> dict:
+    completed = subprocess.run(
+        ["node", "-e", script],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(completed.stdout)
+
+
 class TutorialMarkerProgressTest(unittest.TestCase):
+    def test_graph_tap_uses_polyline_distance_and_three_action_zones(self):
+        helpers = extract_graph_tap_helpers()
+        self.assertIn("function classifyGraphTap", helpers)
+        script = f"""
+{helpers}
+const diagonal = [{{ x: 0, y: 0 }}, {{ x: 100, y: 100 }}];
+const horizontal = [{{ x: 0, y: 0 }}, {{ x: 100, y: 0 }}];
+console.log(JSON.stringify({{
+  betweenSamples: classifyGraphTap(50, 50, diagonal),
+  lineBoundary: classifyGraphTap(50, 44, horizontal),
+  nearMiss: classifyGraphTap(50, 60, horizontal),
+  ignoreBoundary: classifyGraphTap(50, 80, horizontal),
+  farAway: classifyGraphTap(50, 81, horizontal),
+}}));
+"""
+        payload = run_graph_tap_script(script)
+
+        self.assertEqual(payload["betweenSamples"]["action"], "read")
+        self.assertEqual(payload["lineBoundary"]["action"], "read")
+        self.assertEqual(payload["nearMiss"]["action"], "ignore")
+        self.assertEqual(payload["ignoreBoundary"]["action"], "ignore")
+        self.assertEqual(payload["farAway"]["action"], "close")
+
     def test_shared_time_series_helper_exists(self):
         source = LAB_COMMON.read_text(encoding="utf-8")
 
@@ -31,22 +76,23 @@ class TutorialMarkerProgressTest(unittest.TestCase):
         self.assertRegex(source, r"let\s+hasMarker\s*=\s*false")
         self.assertRegex(
             source,
-            re.compile(r"if\s*\(dist\s*<\s*30\).*?hasMarker\s*=\s*true", re.DOTALL),
+            re.compile(r"tapResult\.action\s*===\s*'read'.*?hasMarker\s*=\s*true", re.DOTALL),
         )
         self.assertRegex(source, r"hasMarker:\s*\(\)\s*=>\s*hasMarker")
 
     def test_marker_values_are_only_created_when_value_reading_is_allowed(self):
         source = LAB_COMMON.read_text(encoding="utf-8")
 
-        self.assertIn("onLine = true;", source)
+        self.assertIn("const GRAPH_LINE_HIT_PX = 44;", source)
+        self.assertIn("const GRAPH_CLOSE_DISTANCE_PX = 80;", source)
         self.assertIn("function canReadValue() {", source)
         self.assertIn("return !cfg.canReadValue || cfg.canReadValue();", source)
         self.assertIn("if (!canReadValue() || !zoomed", source)
-        self.assertIn("if (canReadValue()) {", source)
+        self.assertIn("if (tapResult.action === 'read' && canReadValue()) {", source)
         self.assertRegex(
             source,
             re.compile(
-                r"if \(dist < 30\) \{\s*onLine = true;\s*if \(canReadValue\(\)\) \{.*?hasMarker = true;.*?if \(cfg\.onMarker\)",
+                r"if \(tapResult\.action === 'read' && canReadValue\(\)\) \{.*?hasMarker = true;.*?if \(cfg\.onMarker\)",
                 re.DOTALL,
             ),
         )
@@ -134,8 +180,11 @@ class TutorialMarkerProgressTest(unittest.TestCase):
                 self.assertNotIn('<script src="lab-common.js"></script>', generated)
                 self.assertIn("if (cfg.onPan) cfg.onPan({ key });", generated)
                 self.assertIn("cfg.onPinch({ key });", generated)
+                self.assertIn("function classifyGraphTap(tapX, tapY, points)", generated)
+                self.assertIn("const GRAPH_LINE_HIT_PX = 44;", generated)
+                self.assertIn("const GRAPH_CLOSE_DISTANCE_PX = 80;", generated)
                 self.assertIn("if (!canReadValue() || !zoomed", generated)
-                self.assertIn("if (canReadValue()) {", generated)
+                self.assertIn("if (tapResult.action === 'read' && canReadValue()) {", generated)
 
     def test_sensor_page_hints_require_pause_before_reading_a_value(self):
         for page_name in ("gyroscope.html", "magnetometer.html"):

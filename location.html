@@ -253,6 +253,49 @@ var uPlot=function(){"use strict";const l="u-off",e="u-label",t="width",n="heigh
 // 入力取得と物理量の変換だけをページ側へ残す。
 // =====================================================================
 
+// ---- graph tap hit testing ----
+const GRAPH_LINE_HIT_PX = 44;
+const GRAPH_CLOSE_DISTANCE_PX = 80;
+
+function pointToSegmentDistance(px, py, start, end) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) return Math.hypot(px - start.x, py - start.y);
+  const ratio = Math.max(0, Math.min(1, ((px - start.x) * dx + (py - start.y) * dy) / lengthSquared));
+  return Math.hypot(px - (start.x + ratio * dx), py - (start.y + ratio * dy));
+}
+
+function classifyGraphTap(tapX, tapY, points) {
+  let distance = Infinity;
+  let index = null;
+  let previous = null;
+
+  for (const point of points) {
+    if (!point) {
+      previous = null;
+      continue;
+    }
+    const pointDistance = Math.hypot(tapX - point.x, tapY - point.y);
+    if (pointDistance < distance) {
+      distance = pointDistance;
+      index = point.idx;
+    }
+    if (previous) {
+      const segmentDistance = pointToSegmentDistance(tapX, tapY, previous, point);
+      if (segmentDistance < distance) {
+        distance = segmentDistance;
+        index = Math.abs(tapX - previous.x) <= Math.abs(tapX - point.x) ? previous.idx : point.idx;
+      }
+    }
+    previous = point;
+  }
+
+  if (distance <= GRAPH_LINE_HIT_PX) return { action: 'read', index, distance };
+  if (distance <= GRAPH_CLOSE_DISTANCE_PX) return { action: 'ignore', index: null, distance };
+  return { action: 'close', index: null, distance };
+}
+
 function injectLabUplotStyle() {
   if (document.getElementById('lab-uplot-style')) return;
   const st = document.createElement('style');
@@ -642,39 +685,37 @@ function createTimeSeriesCharts(cfg) {
           if (cfg.onZoomChange) cfg.onZoomChange({ key, zoomed: nextZoom });
         } else {
           const plot = uplots[key];
-          let onLine = false;
+          let tapResult = { action: 'close', index: null };
           if (plot && series[key].t.length) {
             const plotRect = plot.over.getBoundingClientRect();
             const tapX = tapStart.x - plotRect.left;
             const tapY = tapStart.y - plotRect.top;
-            const t = viewT.min + tapX / plotRect.width * (viewT.max - viewT.min);
-            let idx = 0;
-            let best = Infinity;
-            for (let i = 0; i < series[key].t.length; i++) {
-              const diff = Math.abs(series[key].t[i] - t);
-              if (diff < best) {
-                best = diff;
-                idx = i;
+            const points = (function* () {
+              for (let idx = 0; idx < series[key].t.length; idx++) {
+                const value = series[key].v[idx];
+                if (value == null) {
+                  yield null;
+                  continue;
+                }
+                const x = plot.valToPos(series[key].t[idx], 'x');
+                const y = plot.valToPos(value, 'y');
+                yield Number.isFinite(x) && Number.isFinite(y) ? { x, y, idx } : null;
               }
-            }
-            const value = series[key].v[idx];
-            if (value != null) {
+            })();
+            tapResult = classifyGraphTap(tapX, tapY, points);
+            if (tapResult.action === 'read' && canReadValue()) {
+              const idx = tapResult.index;
+              const value = series[key].v[idx];
               const ptX = plot.valToPos(series[key].t[idx], 'x');
               const ptY = plot.valToPos(value, 'y');
-              const dist = Math.hypot(tapX - ptX, tapY - ptY);
-              if (dist < 30) {
-                onLine = true;
-                if (canReadValue()) {
-                  hasMarker = true;
-                  plot.setCursor({ left: ptX, top: ptY });
-                  if (cfg.onMarker) {
-                    cfg.onMarker({ key, idx, t: series[key].t[idx], v: value });
-                  }
-                }
+              hasMarker = true;
+              plot.setCursor({ left: ptX, top: ptY });
+              if (cfg.onMarker) {
+                cfg.onMarker({ key, idx, t: series[key].t[idx], v: value });
               }
             }
           }
-          if (!onLine) {
+          if (tapResult.action === 'close') {
             const nextZoom = toggleCardZoom(card);
             clearMarkers();
             refreshVisible();

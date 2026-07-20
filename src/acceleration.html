@@ -104,7 +104,7 @@
 
 <div class="tabs">
   <div class="tab active" data-tab="comp" title="x/y/z 3方向の成分（重力なし）">各成分</div>
-  <div class="tab" data-tab="abs" title="加速度ベクトルの大きさ |a|=√(x²+y²+z²)（重力なし）">絶対値</div>
+  <div class="tab" data-tab="abs" title="加速度ベクトルの大きさ |a|=√(x²+y²+z²)（講習会では自由落下区間を広げて約9.8 m/s² を読む）">絶対値</div>
   <div class="tab" data-tab="long" title="重力をふくめた x/y/z 3成分（乗り物などの長時間観察向け）">長時間</div>
 </div>
 
@@ -129,7 +129,7 @@
   </div>
 
   <p id="err"></p>
-  <p class="hint" id="hint"><span class="hint-plain"><b>グラフをタップ</b>＝拡大</span><span class="hint-zoom"><b>線をタップ</b>＝値、<b>まわりをタップ</b>＝縮小</span></p>
+  <p class="hint" id="hint"><span class="hint-plain"><b>▶で計測</b>、<b>⏸で止める</b>、<b>グラフをタップ</b>＝拡大</span><span class="hint-zoom"><b>2本指</b>＝拡大、<b>1本指</b>＝移動、<b>線をタップ</b>＝値、<b>まわりをタップ</b>＝縮小</span></p>
 </main>
 
 <script src="uplot.js"></script>
@@ -177,8 +177,9 @@ const lab = createXYZLab({
 document.addEventListener('visibilitychange', () => { if (document.hidden) lab.release(); });
 
 // ---- タブ切り替え（各成分 / 絶対値 / 長時間）----
-// 各成分＝重力なしxyz、絶対値＝重力なし|a|（自由落下で|a|≒0の観察用）、
-// 長時間＝重力をふくめたxyz（電車・バスなど乗り物での長時間観察向け。静止時にzへ約9.8が乗る）。
+// 各成分＝重力なしxyz、絶対値＝重力なし|a|、長時間＝重力をふくめたxyz。
+// phyphox の linear acceleration は本来 gravity-free だが、授業導線は講習会テキストに合わせ、
+// 絶対値タブで自由落下区間を一時停止後に拡大・移動・点選択して約9.8 m/s² を読む流れも支える。
 let includeGravity = false;
 const TABS = {
   comp: { mode: 'xyz', gravity: false },

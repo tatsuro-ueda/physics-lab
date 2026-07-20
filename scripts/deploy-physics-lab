@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+DEST_ROOT="/srv/www/physics-lab/"
+
+cd "${REPO_ROOT}"
+python3 build.py
+
+if ! command -v sudo >/dev/null 2>&1; then
+  echo "sudo が見つからないため ${DEST_ROOT} へ反映できません。"
+  exit 1
+fi
+
+if [ ! -x /usr/local/bin/physics-lab-publish ]; then
+  cat <<'EOF'
+/usr/local/bin/physics-lab-publish が未設定です。
+最初の1回だけ、次を実行してください。
+
+sudo ./scripts/install-deploy-helper.sh
+EOF
+  exit 1
+fi
+
+if ! sudo -n /usr/local/bin/physics-lab-publish; then
+  cat <<'EOF'
+physics-lab-publish をパスワードなしで実行できませんでした。
+最初の1回だけ、次を実行してください。
+
+sudo ./scripts/install-deploy-helper.sh
+EOF
+  exit 1
+fi
+
+echo "${DEST_ROOT} へ反映しました。"

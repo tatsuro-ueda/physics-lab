@@ -1,18 +1,19 @@
 ---
-status: open
+status: done
 format: rough
 priority: normal
 scheduled: 2026-07-27T09:00:00.000+09:00
 dateCreated: 2026-07-20T22:00:53.000+09:00
-dateModified: 2026-07-20T22:00:53.000+09:00
+dateModified: 2026-08-27T06:50:00.000+09:00
 tags:
   - task
+  - archived
 ---
 
 # 2026年7月27日 旧VM(newtons-challenge)のphysics-lab環境を削除する
 
-> 状態：未着手（2026年7月27日まで判断保留でよい）
-> 次のゲート：（AIエージェント）新VMでの1週間運用に問題がなかったことをユーザーに確認してから削除する
+> 状態：done（2026年8月27日実施。予定より1ヶ月遅れだが新VM運用は問題なしとユーザー確認済み）
+> 次のゲート：なし
 
 ## 概要
 
@@ -47,5 +48,21 @@ rm -rf ~/physics-lab
 
 ## 成果物
 
-- 削除実行ログ:
-- 旧URL https://newtons-challenge.exe.xyz/physics-lab/ が404になったことの確認:
+- 削除実行ログ（2026年8月27日、旧VM上で実行）:
+  - 事前確認: `git status` clean、`origin/main..main` 未pushコミット0件（pull --ff-onlyでd631cddまで同期後）
+  - `/etc/caddy/conf.d/physics-lab.caddy` 削除 → `systemctl reload caddy` → active維持
+  - `/srv/www/physics-lab` 削除
+  - `/usr/local/bin/physics-lab-publish` と `/etc/sudoers.d/physics-lab-publish` 削除
+  - `~/physics-lab`（repo複製）削除は、このtasknoteのclose commit・push後に最終手順として実行
+- 旧URL https://newtons-challenge.exe.xyz/physics-lab/ が404になったことの確認: 外部DNS経由curlで404。同居アプリのトップ（/）は200のまま巻き添えなし
+- 補足: 新VMの開発用URLは非公開（ログイン要求）になっているが、ユーザー確認により意図的とのこと。学校用URL（GitHub Pages）は影響なし
+
+## Closing
+
+- 状態: done
+- 次のゲート: なし
+- close 条件:
+  - [x] 未記録の作業ログが記録済み
+  - [x] 削除対象4点がすべて削除されている（repo複製はpush後に削除）
+  - [x] 旧URLの404と同居アプリの無事を外部から確認した
+  - [x] 削除前にユーザーへ新VM運用に問題なかったか確認した

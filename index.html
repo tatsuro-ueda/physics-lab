@@ -59,6 +59,10 @@
   .foot svg { vertical-align: -4px; }
   .foot .sep { color: #444; margin: 0 8px; }
 </style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#141414">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
 <main>
@@ -180,6 +184,13 @@
   d.innerHTML = '<div class="rg-icon">📱</div><div>タブレットを たてに もどしてね</div>';
   document.body.appendChild(d);
 })();
+</script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js");
+    });
+  }
 </script>
 </body>
 </html>

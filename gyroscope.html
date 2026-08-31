@@ -68,6 +68,10 @@
   .controls { text-align: center; margin: 8px 0; color: #aaa; font-size: 0.9rem; }
   #err { color: #f88; text-align: center; }
 </style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a1a1a">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
 <header>
@@ -839,6 +843,13 @@ const lab = createXYZLab({
   d.innerHTML = '<div class="rg-icon">📱</div><div>タブレットを たてに もどしてね</div>';
   document.body.appendChild(d);
 })();
+</script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js");
+    });
+  }
 </script>
 </body>
 </html>

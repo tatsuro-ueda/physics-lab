@@ -25,6 +25,9 @@
 | 音のスペクトル | `src/sound.html` | まだ独自実装（メニュー非表示） |
 | コンパス | `src/compass.html` | まだ独自実装（メニュー非表示） |
 | **📱 縦向きガード**（横向きにしたら全面カバーで案内） | `src/orientation-guard.js` | 全ページ共通の正本。発動＝横向き×タッチ端末 |
+| **アクセス解析（GA4）の測定ID** | `ga4.js`（リポジトリ直下） | 生成物ではなく手で直す。空文字のあいだは何も読み込まない |
+| **ホーム画面へ追加（PWA）** | `manifest.json` / `sw.js` / `icons/`（すべて直下） | 生成物ではなく手で直す |
+| オフライン時に出る画面 | `src/offline.html` | 他ページと同じく `build.py` で直下へ生成される |
 
 ## 3軸センサーページのしくみ
 
@@ -47,6 +50,31 @@ python3 build.py
 単一HTMLをローカル保存して `file://` で開いても、センサーとマイクは動きません。
 安全なコンテキストであるHTTPSから開く必要があります。このため、ダウンロードボタンは撤去しています。
 
+### 直下にある「生成物ではない」ファイル
+
+`*.html` 以外の直下ファイルは手で直します。ブラウザがサイトのルートから読むものなので、
+`src/` に置けません。
+
+| ファイル | 役割 |
+|---|---|
+| `ga4.js` | アクセス解析。1行目の `GA4_MEASUREMENT_ID` だけを直す |
+| `manifest.json` | ホーム画面へ追加したときの名前・色・アイコン |
+| `sw.js` | Service Worker。通信に失敗したとき `offline.html` を返すだけ |
+| `icons/` | `icon.svg` / `icon-maskable.svg` が正本。PNGは `convert` で生成 |
+
+公開先が `https://tatsuro-ueda.github.io/physics-lab/` というサブパスなので、
+**これらの参照はすべて相対パスで書きます**（`/sw.js` と書くと `tatsuro-ueda.github.io` の
+直下を指して404になる）。manifest の `start_url` / `scope` も `./` です。
+
+アイコンPNGの作り直し:
+
+```bash
+convert -background none icons/icon.svg -resize 512x512 icons/icon-512.png
+convert -background none icons/icon.svg -resize 192x192 icons/icon-192.png
+convert -background none icons/icon-maskable.svg -resize 512x512 icons/icon-maskable-512.png
+for i in icons/*.png; do convert "$i" -depth 8 -strip PNG32:"$i"; done
+```
+
 ## チュートリアルのしくみ（共通エンジン）
 
 チュートリアルの「器」（進捗ドット・あと◯つ・完了/もっとやる・localStorage・🔰トグル・見た目）は
@@ -57,6 +85,8 @@ python3 build.py
 ## 設計上の約束
 
 - アプリのコードは実行時に外部CDNや外部APIへ依存しない。必要なライブラリ（uPlot・driver.js）は `src/` に同梱し、`build.py` で単一HTMLへ埋め込む。理由：学校ネット制限・長期保守
+  - 唯一の例外がアクセス解析（`ga4.js`）。測定IDが空のあいだは何も読み込まず、IDを入れたときだけ Google へ非同期で1本読みに行く。学校ネットで遮断されても計測ページ自体は動く
+  - IDを入れる前に、`README.md` と `docs/usage.md` のプライバシーの書き方を見直すこと。センサーの計測値は送らないが、どのページが開かれたかは Google へ送られる
 - テーマ色は黄色 `#ffe000`、軸色は X=`#4C8DF0`（青）/ Y=`#4FC96B`（緑）/ Z=`#F2C744`（黄）
 - 軸ラベルには「正の向き」まで書く（例：アプリでは東を正）
 - iOS Safariは加速度の符号がW3C仕様と逆なので、`IOS_SIGN` で補正する（phyphox-iOSの `kG=-9.81` と同じ考え方）

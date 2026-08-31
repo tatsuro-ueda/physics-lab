@@ -51,6 +51,10 @@
   }
   #err { color: #f88; }
 </style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#101820">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
 <header>
@@ -160,5 +164,12 @@ function draw() {
 }
 </script>
 <script src="orientation-guard.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js");
+    });
+  }
+</script>
 </body>
 </html>

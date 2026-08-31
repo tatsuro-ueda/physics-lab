@@ -94,6 +94,10 @@
   #err { color: #f88; text-align: center; }
   /* 🔰チュートリアルの見た目は tutorial.js（共通エンジン）が持つ */
 </style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a1a1a">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
 <header>
@@ -1362,6 +1366,13 @@ createOnboardingTour({
   d.innerHTML = '<div class="rg-icon">📱</div><div>タブレットを たてに もどしてね</div>';
   document.body.appendChild(d);
 })();
+</script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js");
+    });
+  }
 </script>
 </body>
 </html>

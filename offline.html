@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>オフラインです | タブレット物理実験ラボ</title>
+<meta name="theme-color" content="#141414">
+<style>
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: #141414;
+    color: #eee;
+    margin: 0;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  main { max-width: 420px; padding: 24px; text-align: center; }
+  h1 { font-size: 1.35rem; margin: 18px 0 10px; }
+  p { color: #c9c9c9; font-size: 0.95rem; line-height: 1.7; margin: 0 0 8px; }
+  a.retry {
+    display: inline-block; margin-top: 22px;
+    background: #ffe000; color: #1a1a1a;
+    border-radius: 999px; padding: 12px 24px;
+    text-decoration: none; font-size: 0.95rem; font-weight: bold;
+  }
+</style>
+</head>
+<body>
+<main>
+  <svg viewBox="0 0 48 48" width="52" height="52" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 6 h10 M21 6 v12 L10 38 a4 4 0 0 0 3.5 6 h21 a4 4 0 0 0 3.5 -6 L27 18 V6" stroke="#ddd" stroke-width="2.5"/>
+    <path d="M15 30 h18" stroke="#ffe000" stroke-width="2.5"/>
+  </svg>
+  <h1>いま、つながっていません</h1>
+  <p>計測ページを開くにはネットワークが必要です。</p>
+  <p>学校のWi-Fiにつながっているか確認して、もう一度ひらいてください。</p>
+  <a class="retry" href="./">もう一度ひらく</a>
+</main>
+</body>
+</html>

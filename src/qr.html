@@ -21,6 +21,11 @@
   .noprint a { color: #b8860b; }
   @media print { .noprint { display: none; } }
 </style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script src="ga4.js" defer></script>
 </head>
 <body>
 <div class="sheet">
@@ -33,5 +38,12 @@
   <p class="noprint"><a href="index.html">← アプリにもどる</a>　／　この画面をそのまま印刷できます（余計な部分は印刷されません）</p>
 </div>
 <script src="orientation-guard.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js");
+    });
+  }
+</script>
 </body>
 </html>

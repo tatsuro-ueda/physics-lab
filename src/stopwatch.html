@@ -98,6 +98,11 @@
     font-variant-numeric: tabular-nums;
   }
 </style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#101820">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script src="ga4.js" defer></script>
 </head>
 <body>
 <header>
@@ -396,5 +401,12 @@ createOnboardingTour({
 });
 </script>
 <script src="orientation-guard.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js");
+    });
+  }
+</script>
 </body>
 </html>

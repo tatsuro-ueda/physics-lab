@@ -24,7 +24,6 @@
 | 音響ストップウォッチの計測ロジック | `src/stopwatch.html` の `<script>` | チュートリアルの器は `tutorial.js` |
 | 音のスペクトル | `src/sound.html` | まだ独自実装（メニュー非表示） |
 | コンパス | `src/compass.html` | まだ独自実装（メニュー非表示） |
-| **アクセス解析（GA4）の測定ID** | `ga4.js`（リポジトリ直下） | 生成物ではなく手で直す。空文字のあいだは何も読み込まない |
 | **ホーム画面へ追加（PWA）** | `manifest.json` / `sw.js` / `icons/`（すべて直下） | 生成物ではなく手で直す |
 | オフライン時に出る画面 | `src/offline.html` | 他ページと同じく `build.py` で直下へ生成される |
 
@@ -56,7 +55,6 @@ python3 build.py
 
 | ファイル | 役割 |
 |---|---|
-| `ga4.js` | アクセス解析。1行目の `GA4_MEASUREMENT_ID` だけを直す |
 | `manifest.json` | ホーム画面へ追加したときの名前・色・アイコン |
 | `sw.js` | Service Worker。通信に失敗したとき `offline.html` を返すだけ |
 | `icons/` | `icon.svg` / `icon-maskable.svg` が正本。PNGは `convert` で生成 |
@@ -84,8 +82,6 @@ for i in icons/*.png; do convert "$i" -depth 8 -strip PNG32:"$i"; done
 ## 設計上の約束
 
 - アプリのコードは実行時に外部CDNや外部APIへ依存しない。必要なライブラリ（uPlot・driver.js）は `src/` に同梱し、`build.py` で単一HTMLへ埋め込む。理由：学校ネット制限・長期保守
-  - 唯一の例外がアクセス解析（`ga4.js`）。測定IDが空のあいだは何も読み込まず、IDを入れたときだけ Google へ非同期で1本読みに行く。学校ネットで遮断されても計測ページ自体は動く
-  - IDを入れる前に、`README.md` と `docs/usage.md` のプライバシーの書き方を見直すこと。センサーの計測値は送らないが、どのページが開かれたかは Google へ送られる
 - テーマ色は黄色 `#ffe000`、軸色は X=`#4C8DF0`（青）/ Y=`#4FC96B`（緑）/ Z=`#F2C744`（黄）
 - 軸ラベルには「正の向き」まで書く（例：アプリでは東を正）
 - iOS Safariは加速度の符号がW3C仕様と逆なので、`IOS_SIGN` で補正する（phyphox-iOSの `kG=-9.81` と同じ考え方）

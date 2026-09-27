@@ -16,7 +16,6 @@
 - `src/lab-common.js`: 3軸計測の保持、グラフ描画、タップ、拡大縮小、開始停止削除、チュートリアルへ公開する状態。
 - `src/tutorial.js`: 体験チュートリアルのDOM、進捗、保存、`tick` / `event`。
 - `src/tour.js`: 初回オンボーディングの起動、既読保存、driver.jsのラッパー。
-- `src/orientation-guard.js`: 横向きタッチ端末への縦向き案内。
 - `build.py`: `src/*.html` が参照するローカルJS・CSSをインライン化し、ルートHTMLを生成する。
 
 ## データフロー

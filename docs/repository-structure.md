@@ -13,7 +13,6 @@
 - 3軸グラフと共通操作は `src/lab-common.js`。
 - 体験チュートリアルは `src/tutorial.js`。
 - 初回オンボーディングは `src/tour.js`。
-- 縦向きガードは `src/orientation-guard.js`。
 - `uplot.js`、`driver.js`、`driver.css` はベンダー資産として無改変で保持する。
 
 ## `src/` の責務

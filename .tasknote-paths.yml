@@ -1,0 +1,15 @@
+# タスクノートのチェックリスト・根拠文書の場所。
+# 対象文書の既定値・個別指定は共有 make-development-checklist を参照。
+# .llm-wiki-paths.yml（文書更新提案用）とは別に管理する。
+docs_root: docs
+
+# 現行docsを役割へ対応付ける。同じ規約を別ファイルへ複製しない。
+llm_wiki_update_docs:
+  default_targets:
+    - architecture
+    - repository_structure
+    - framework_rule
+    - ux_policy
+  target_docs:
+    framework_rule: "coding-rules.md"
+    ux_policy: "UX-policy.md"
